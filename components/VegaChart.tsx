@@ -24,9 +24,11 @@ function themeConfig(dark: boolean) {
     view: { stroke: null },
     axis: {
       labelColor: ink, titleColor: ink, gridColor: grid, domainColor: grid, tickColor: grid,
-      labelFontSize: 12, titleFontSize: 12, titleFontWeight: 500, labelFont: "Public Sans Variable, system-ui, sans-serif",
+      labelFontSize: 12, titleFontSize: 14, titleFontWeight: 400, titleFont: "Bangers, Impact, sans-serif",
+      labelFont: "Public Sans Variable, system-ui, sans-serif",
     },
-    legend: { labelColor: ink, titleColor: ink, labelFontSize: 12, titleFontSize: 12, symbolType: "circle" },
+    legend: { labelColor: ink, titleColor: ink, labelFontSize: 12, titleFontSize: 15, titleFont: "Bangers, Impact, sans-serif",
+      titleFontWeight: 400, symbolType: "circle" },
     header: { labelColor: ink, titleColor: ink, labelFontSize: 12 },
     title: { color: ink },
     line: { strokeWidth: 2 },

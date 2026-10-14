@@ -1,4 +1,4 @@
-import "@fontsource-variable/source-serif-4";
+import "@fontsource/bangers";
 import "@fontsource-variable/public-sans";
 import "./globals.css";
 import type { Metadata } from "next";

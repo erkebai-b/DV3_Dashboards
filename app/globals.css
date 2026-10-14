@@ -19,8 +19,11 @@
   --st-bg-claimed: #fbeedc;
   --st-bg-verified: #e1f1e7;
   --st-bg-archived: #e9ecef;
-  --serif: "Source Serif 4 Variable", "Source Serif Pro", Georgia, serif;
+  /* Display face for every heading, label and number; body text stays in --sans for legibility.
+     To set the whole site in Bangers, change --body to var(--display). */
+  --display: "Bangers", "Impact", "Arial Narrow", sans-serif;
   --sans: "Public Sans Variable", "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --body: var(--sans);
   --measure: 72ch;
 }
 
@@ -55,15 +58,20 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font: 400 1rem/1.6 var(--sans);
+  font: 400 1rem/1.6 var(--body);
   font-variant-numeric: tabular-nums;
 }
 a { color: var(--link); text-underline-offset: 0.18em; }
 a:hover { text-decoration-thickness: 2px; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
 cite { font-style: italic; }
-h1, h2, h3 { font-family: var(--serif); color: var(--ink); font-weight: 600; letter-spacing: -0.01em; }
-h3 { font-size: 1.15rem; margin: 2rem 0 0.25rem; }
+h1, h2, h3, .brand, .site-header nav a, .question .q, .question .topic, .question .open, .dashboard-head .topic,
+.metric-value, .chip, .segmented button, .download, .control legend, .control .legend, .status, .provenance dt,
+.findings h2, .small-multiple h3, .definitions dt {
+  font-family: var(--display); font-weight: 400; letter-spacing: 0.03em; font-synthesis: none;
+}
+h1, h2, h3 { color: var(--ink); line-height: 1.02; }
+h3 { font-size: 1.45rem; margin: 2rem 0 0.25rem; }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
 .muted { color: var(--muted); }
 .small { font-size: 0.875rem; }
@@ -74,9 +82,9 @@ h3 { font-size: 1.15rem; margin: 2rem 0 0.25rem; }
 /* ---------------------------------------------------------------- header and footer */
 .site-header { border-bottom: 1px solid var(--rule); background: var(--paper); }
 .header-inner { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem 2rem; padding-top: 1rem; padding-bottom: 1rem; }
-.brand { font-family: var(--serif); font-weight: 700; font-size: 1.25rem; color: var(--ink); text-decoration: none; }
+.brand { font-size: 1.6rem; color: var(--ink); text-decoration: none; }
 .site-header nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; }
-.site-header nav a { color: var(--ink-2); text-decoration: none; font-size: 0.95rem; padding: 0.25rem 0; }
+.site-header nav a { color: var(--ink-2); text-decoration: none; font-size: 1.2rem; padding: 0.25rem 0; }
 .site-header nav a:hover { color: var(--ink); text-decoration: underline; }
 .site-footer { border-top: 1px solid var(--rule); margin-top: 5rem; color: var(--muted); font-size: 0.9rem; }
 .footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 2rem; padding-top: 1.5rem; padding-bottom: 2.5rem; }
@@ -84,16 +92,16 @@ h3 { font-size: 1.15rem; margin: 2rem 0 0.25rem; }
 
 /* ---------------------------------------------------------------- home */
 .hero { padding: clamp(3rem, 8vw, 6rem) 0 2.5rem; }
-.hero h1 { font-size: clamp(2.3rem, 5.6vw, 4.2rem); line-height: 1.04; max-width: 17ch; margin: 0 0 1.25rem; font-weight: 600; }
+.hero h1 { font-size: clamp(2.8rem, 7vw, 5.6rem); line-height: 0.98; max-width: 18ch; margin: 0 0 1.25rem; }
 .lede { font-size: 1.2rem; line-height: 1.55; color: var(--ink-2); max-width: 60ch; margin: 0; }
 .questions { list-style: none; padding: 0; margin: 1rem 0 0; border-top: 2px solid var(--ink); }
 .questions li { border-bottom: 1px solid var(--rule); }
 .question { display: grid; grid-template-columns: minmax(9rem, 13rem) 1fr; gap: 0.35rem 2rem; padding: 2rem 0; color: inherit; text-decoration: none; }
-.question .topic { grid-row: span 4; font-weight: 600; color: var(--muted); padding-top: 0.45rem; }
-.question .q { font-family: var(--serif); font-size: clamp(1.4rem, 2.6vw, 2rem); line-height: 1.18; font-weight: 600; max-width: 30ch; }
+.question .topic { grid-row: span 4; color: var(--muted); padding-top: 0.45rem; font-size: 1.25rem; }
+.question .q { font-size: clamp(1.7rem, 3.2vw, 2.5rem); line-height: 1.04; max-width: 32ch; }
 .question .a { font-size: 1.05rem; color: var(--ink-2); max-width: 62ch; }
 .question .by { font-size: 0.875rem; color: var(--muted); }
-.question .open { color: var(--link); font-weight: 600; margin-top: 0.4rem; }
+.question .open { color: var(--link); margin-top: 0.4rem; font-size: 1.15rem; }
 .question:hover .q { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.15em; }
 @media (max-width: 700px) {
   .question { grid-template-columns: 1fr; }
@@ -102,13 +110,13 @@ h3 { font-size: 1.15rem; margin: 2rem 0 0.25rem; }
 
 /* ---------------------------------------------------------------- dashboard head */
 .dashboard-head { padding: clamp(2.5rem, 6vw, 4rem) 0 1rem; max-width: var(--measure); }
-.dashboard-head .topic { margin: 0 0 0.5rem; font-weight: 600; color: var(--muted); }
-.dashboard-head h1 { font-size: clamp(2rem, 4.4vw, 3.1rem); line-height: 1.08; margin: 0 0 1.25rem; }
+.dashboard-head .topic { margin: 0 0 0.5rem; color: var(--muted); font-size: 1.3rem; }
+.dashboard-head h1 { font-size: clamp(2.4rem, 5.4vw, 4rem); margin: 0 0 1.25rem; }
 .question-text { font-size: 1.15rem; line-height: 1.55; margin: 0 0 0.75rem; }
 .meta { color: var(--ink-2); margin: 0; }
 
 .findings { background: var(--panel); border-radius: 6px; padding: 1.5rem clamp(1rem, 3vw, 2rem); margin: 1.5rem 0 1rem; }
-.findings h2 { font-size: 1.35rem; margin: 0 0 0.75rem; }
+.findings h2 { font-size: 1.7rem; margin: 0 0 0.75rem; }
 .findings ul { margin: 0; padding-left: 1.2rem; max-width: 80ch; }
 .findings li { margin: 0.45rem 0; }
 .findings li::marker { color: var(--muted); }
@@ -116,14 +124,14 @@ h3 { font-size: 1.15rem; margin: 2rem 0 0.25rem; }
 
 /* ---------------------------------------------------------------- views */
 .view { border-top: 2px solid var(--ink); margin-top: 3.5rem; padding-top: 1.5rem; }
-.view h2 { font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.15; margin: 0 0 0.35rem; max-width: 40ch; }
+.view h2 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); margin: 0 0 0.4rem; max-width: 40ch; }
 .unit { color: var(--ink-2); margin: 0 0 1rem; max-width: var(--measure); }
 
 .provenance { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem 2rem; margin: 0 0 1.5rem; padding: 0.85rem 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); font-size: 0.9rem; }
 .provenance div { min-width: 0; }
-.provenance dt { color: var(--muted); font-size: 0.8rem; }
+.provenance dt { color: var(--muted); font-size: 1rem; }
 .provenance dd { margin: 0.1rem 0 0; }
-.status { display: inline-block; padding: 0.05rem 0.55rem; border-radius: 999px; font-size: 0.85rem; font-weight: 600; }
+.status { display: inline-block; padding: 0.1rem 0.6rem; border-radius: 999px; font-size: 1rem; }
 .status-observed { color: var(--st-observed); background: var(--st-bg-observed); }
 .status-estimated { color: var(--st-estimated); background: var(--st-bg-estimated); }
 .status-claimed { color: var(--st-claimed); background: var(--st-bg-claimed); }
@@ -132,10 +140,12 @@ h3 { font-size: 1.15rem; margin: 2rem 0 0.25rem; }
 
 .controls { display: flex; flex-wrap: wrap; gap: 1.25rem 2.5rem; align-items: flex-start; margin: 0 0 1.5rem; }
 .control { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 0.4rem; }
-.control legend, .control .legend { font-weight: 600; font-size: 0.9rem; padding: 0; margin-bottom: 0.4rem; }
+.control legend, .control .legend { font-size: 1.15rem; padding: 0; margin-bottom: 0.4rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; max-width: 640px; }
+select { font-family: var(--body); }
+.chip, .segmented button { font-size: 1.05rem; }
 .chip, .segmented button, .download, select {
-  font: inherit; font-size: 0.9rem; color: var(--ink); background: var(--surface);
+  font-size: 0.95rem; color: var(--ink); background: var(--surface);
   border: 1px solid var(--rule); border-radius: 4px; padding: 0.35rem 0.7rem; cursor: pointer;
 }
 .chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
@@ -155,7 +165,7 @@ select { padding-right: 1.6rem; }
 .metric { border-top: 1px solid var(--rule); padding-top: 0.6rem; min-width: 0; }
 .metric dt { font-size: 0.85rem; color: var(--muted); line-height: 1.35; }
 .metric dd { margin: 0.25rem 0 0; display: flex; flex-direction: column; }
-.metric-value { font-size: clamp(1.35rem, 2.4vw, 1.75rem); font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+.metric-value { font-size: clamp(1.8rem, 3.2vw, 2.4rem); line-height: 1.05; overflow-wrap: anywhere; }
 .metric-note { font-size: 0.85rem; color: var(--ink-2); }
 
 .chart { margin: 0 0 1rem; width: 100%; }
@@ -177,13 +187,13 @@ tbody tr:last-child td { border-bottom: 0; }
 .loading { color: var(--muted); padding: 3rem 0; }
 .sources { font-size: 0.875rem; color: var(--ink-2); max-width: 90ch; margin: 1rem 0; }
 .sources p { margin: 0.4rem 0; }
-.download { font-weight: 600; }
+.download { font-size: 1.05rem; }
 .download:hover { border-color: var(--ink-2); }
 
 /* ---------------------------------------------------------------- prose */
 .prose { max-width: var(--measure); padding-top: clamp(2.5rem, 6vw, 4rem); }
-.prose h1 { font-size: clamp(2rem, 4.4vw, 3rem); margin: 0 0 1rem; }
-.prose h2 { font-size: 1.5rem; margin: 2.5rem 0 0.5rem; }
+.prose h1 { font-size: clamp(2.4rem, 5.4vw, 4rem); margin: 0 0 1rem; }
+.prose h2 { font-size: 1.9rem; margin: 2.5rem 0 0.5rem; }
 .prose li { margin: 0.5rem 0; }
 .definitions { display: grid; grid-template-columns: max-content 1fr; gap: 0.75rem 1.25rem; align-items: baseline; }
 .definitions dd { margin: 0; }
@@ -191,4 +201,4 @@ tbody tr:last-child td { border-bottom: 0; }
 
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
 .chip:disabled { opacity: 0.45; cursor: not-allowed; }
-.small-multiple h3 { font-family: var(--sans); font-size: 0.95rem; margin: 1rem 0 0.25rem; }
+.small-multiple h3 { font-size: 1.2rem; margin: 1rem 0 0.25rem; }

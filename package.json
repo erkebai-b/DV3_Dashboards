@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@fontsource-variable/public-sans": "5.2.7",
-    "@fontsource-variable/source-serif-4": "5.2.9",
+    "@fontsource/bangers": "5.2.6",
     "d3-dsv": "3.0.1",
     "next": "15.5.28",
     "react": "19.1.0",
