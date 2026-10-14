@@ -1,0 +1,36 @@
+state,state_name,seat_class,election_type,incumbent,incumbent_party,incumbent_since,last_election_cycle,last_election_stage,last_election_date,last_winner_party,last_dem_margin,pres_2024_dem_margin,last_margin_size,senate_minus_pres_margin
+AK,Alaska,Class II,Regular,Dan Sullivan,Republican,2021-01-03,2020,general,2020-11-03,Republican,-12.7,-13.14,12.7,0.44
+AL,Alabama,Class II,Regular,Tommy Tuberville,Republican,2021-01-03,2020,general,2020-11-03,Republican,-20.36,-30.47,20.36,10.11
+AR,Arkansas,Class II,Regular,Tom Cotton,Republican,2021-01-03,2020,general,2020-11-03,Republican,,-30.64,,
+CO,Colorado,Class II,Regular,John W. Hickenlooper,Democrat,2021-01-03,2020,general,2020-11-03,Democrat,9.32,10.98,9.32,-1.66
+DE,Delaware,Class II,Regular,Christopher A. Coons,Democrat,2021-01-03,2020,general,2020-11-03,Democrat,21.54,14.7,21.54,6.84
+FL,Florida,Class III,Special,Ashley Moody,Republican,2025-01-21,2022,general,2022-11-08,Republican,-16.41,-13.1,16.41,-3.31
+GA,Georgia,Class II,Regular,Jon Ossoff,Democrat,2021-01-20,2020,runoff,2021-01-05,Democrat,1.23,-2.19,1.23,3.42
+IA,Iowa,Class II,Regular,Joni Ernst,Republican,2021-01-03,2020,general,2020-11-03,Republican,-6.59,-13.21,6.59,6.62
+ID,Idaho,Class II,Regular,James E. Risch,Republican,2021-01-03,2020,general,2020-11-03,Republican,-29.38,-36.49,29.38,7.11
+IL,Illinois,Class II,Regular,Richard J. Durbin,Democrat,2021-01-03,2020,general,2020-11-03,Democrat,16.07,10.9,16.07,5.17
+KS,Kansas,Class II,Regular,Roger Marshall,Republican,2021-01-03,2020,general,2020-11-03,Republican,-11.44,-16.12,11.44,4.68
+KY,Kentucky,Class II,Regular,Mitch McConnell,Republican,2021-01-03,2020,general,2020-11-03,Republican,-19.53,-30.53,19.53,11.0
+LA,Louisiana,Class II,Regular,Bill Cassidy,Republican,2021-01-03,2020,jungle primary,2020-11-03,Republican,-40.3,-22.01,40.3,-18.29
+MA,Massachusetts,Class II,Regular,Edward J. Markey,Democrat,2021-01-03,2020,general,2020-11-03,Democrat,33.11,25.2,33.11,7.91
+ME,Maine,Class II,Regular,Susan M. Collins,Republican,2021-01-03,2020,general,2020-11-03,Republican,-8.6,6.94,8.6,-15.54
+MI,Michigan,Class II,Regular,Gary C. Peters,Democrat,2021-01-03,2020,general,2020-11-03,Democrat,1.69,-1.41,1.69,3.1
+MN,Minnesota,Class II,Regular,Tina Smith,Democrat,2021-01-03,2020,general,2020-11-03,Democrat,5.24,4.24,5.24,1.0
+MS,Mississippi,Class II,Regular,Cindy Hyde-Smith,Republican,2021-01-03,2020,general,2020-11-03,Republican,-9.98,-22.9,9.98,12.92
+MT,Montana,Class II,Regular,Steve Daines,Republican,2021-01-03,2020,general,2020-11-03,Republican,-10.02,-19.93,10.02,9.91
+NC,North Carolina,Class II,Regular,Thom Tillis,Republican,2021-01-03,2020,general,2020-11-03,Republican,-1.75,-3.21,1.75,1.46
+NE,Nebraska,Class II,Regular,Pete Ricketts,Republican,2024-11-05,2024,general,2024-11-05,Republican,-25.16,-20.46,25.16,-4.7
+NH,New Hampshire,Class II,Regular,Jeanne Shaheen,Democrat,2021-01-03,2020,general,2020-11-03,Democrat,15.65,2.78,15.65,12.87
+NJ,New Jersey,Class II,Regular,Cory A. Booker,Democrat,2021-01-03,2020,general,2020-11-03,Democrat,16.31,5.91,16.31,10.4
+NM,New Mexico,Class II,Regular,Ben Ray Luján,Democrat,2021-01-03,2020,general,2020-11-03,Democrat,6.11,6.0,6.11,0.11
+OH,Ohio,Class III,Special,Jon Husted,Republican,2025-01-21,2022,general,2022-11-08,Republican,-6.11,-11.21,6.11,5.1
+OK,Oklahoma,Class II,Regular,Alan Armstrong,Republican,2026-03-24,2022,general,2022-11-08,Republican,-26.53,-34.26,26.53,7.73
+OR,Oregon,Class II,Regular,Jeff Merkley,Democrat,2021-01-03,2020,general,2020-11-03,Democrat,17.59,14.31,17.59,3.28
+RI,Rhode Island,Class II,Regular,Jack Reed,Democrat,2021-01-03,2020,general,2020-11-03,Democrat,33.12,13.78,33.12,19.34
+SC,South Carolina,Class II,Regular,Darline Graham,Republican,2026-07-14,2020,general,2020-11-03,Republican,-10.27,-17.87,10.27,7.6
+SD,South Dakota,Class II,Regular,Mike Rounds,Republican,2021-01-03,2020,general,2020-11-03,Republican,-31.47,-29.19,31.47,-2.28
+TN,Tennessee,Class II,Regular,Bill Hagerty,Republican,2021-01-03,2020,general,2020-11-03,Republican,-27.04,-29.72,27.04,2.68
+TX,Texas,Class II,Regular,John Cornyn,Republican,2021-01-03,2020,general,2020-11-03,Republican,-9.64,-13.68,9.64,4.04
+VA,Virginia,Class II,Regular,Mark R. Warner,Democrat,2021-01-03,2020,general,2020-11-03,Democrat,12.08,5.77,12.08,6.31
+WV,West Virginia,Class II,Regular,Shelley Moore Capito,Republican,2021-01-03,2020,general,2020-11-03,Republican,-43.28,-41.86,43.28,-1.42
+WY,Wyoming,Class II,Regular,Cynthia M. Lummis,Republican,2021-01-03,2020,general,2020-11-03,Republican,-46.09,-45.76,46.09,-0.33

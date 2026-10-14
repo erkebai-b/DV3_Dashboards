@@ -1,0 +1,360 @@
+schema_version: 2
+dashboard:
+  title: '2026 midterms: how far can the polls be off, and which Senate seats are inside that range?'
+  subject: usa_elections_2026
+  question: How large have polling errors been in US general elections since 1998, and which of the 35 Senate
+    contests on the 3 November 2026 ballot were last decided by margins smaller than a typical polling miss?
+  audience: Journalists, campaign volunteers and politically engaged readers interpreting 2026 Senate polls in
+    the final weeks of the campaign
+  entrypoint: app.py
+  pages: []
+  sample_environment_variable: DASHBOARD_SAMPLE_MODE
+sources:
+- id: fte_raw_polls
+  publisher: FiveThirtyEight (ABC News)
+  title: 'Pollster ratings database: raw_polls.csv'
+  url: https://github.com/fivethirtyeight/data/tree/master/pollster-ratings
+  licence: Creative Commons Attribution 4.0 International (CC BY 4.0)
+  retrieved: '2026-10-15'
+  cadence: No longer updated (FiveThirtyEight closed in 2025); last cycle covered is 2022
+  status: archive
+  notes: File pollster-ratings/raw_polls.csv; 20,466 poll questions, of which 16,672 even-year Democrat-vs-Republican
+    general-election questions are kept.
+- id: fte_election_results
+  publisher: FiveThirtyEight (ABC News)
+  title: 'Election results: U.S. Senate and presidential (election-results)'
+  url: https://github.com/fivethirtyeight/election-results
+  licence: No licence file in this repository; FiveThirtyEight publishes its data sets under CC BY 4.0 unless
+    otherwise noted, and the underlying certified results are public records
+  retrieved: '2026-10-15'
+  cadence: No longer updated; last commit February 2025 (results through the 2024 cycle)
+  status: archive
+  notes: Files election_results_senate.csv and election_results_presidential.csv; each row cites the state
+    election office page it was compiled from.
+- id: unitedstates_legislators
+  publisher: The @unitedstates project
+  title: 'congress-legislators: legislators-current'
+  url: https://github.com/unitedstates/congress-legislators
+  licence: CC0 1.0 Universal public domain dedication
+  retrieved: '2026-10-15'
+  cadence: Updated as members join or leave Congress
+  status: snapshot
+  notes: File legislators-current.yaml; Senate terms ending 2027-01-03 (Class II) or 2026-11-03 (special
+    elections in Ohio and Florida). The 2026 Oklahoma and South Carolina appointments were checked against
+    contemporary news reports.
+datasets:
+- id: polls
+  source_ids:
+  - fte_raw_polls
+  sample: data/sample.csv
+  processed_output: data/processed.csv
+  format: csv
+  date_column: election_date
+  primary_key:
+  - question_id
+  minimum_rows: 1000
+  latest_observation: '2022-12-06'
+  columns:
+    question_id:
+      type: integer
+      role: identifier
+      nullable: false
+    poll_id:
+      type: integer
+      role: identifier
+      nullable: false
+    cycle:
+      type: integer
+      role: time
+      nullable: false
+      allowed_values: [1998, 2000, 2002, 2004, 2006, 2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022]
+    race_type:
+      type: string
+      role: dimension
+      nullable: false
+      allowed_values: [Senate, Governor, House, President]
+    race:
+      type: string
+      role: identifier
+      nullable: false
+    location:
+      type: string
+      role: geography
+      nullable: false
+    pollster:
+      type: string
+      role: dimension
+      nullable: false
+    methodology:
+      type: string
+      role: dimension
+      nullable: true
+    partisan_sponsor:
+      type: string
+      role: dimension
+      nullable: true
+    poll_date:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '1998-01-01'
+      date_maximum: '2022-12-31'
+    election_date:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '1998-01-01'
+      date_maximum: '2022-12-31'
+    days_to_election:
+      type: integer
+      role: measure
+      nullable: false
+      unit: days
+      minimum: 0
+      maximum: 90
+    sample_size:
+      type: integer
+      role: measure
+      nullable: false
+      unit: respondents
+      minimum: 1
+      maximum: 1000000
+    dem_margin_poll:
+      type: number
+      role: measure
+      nullable: false
+      unit: percentage points (Democrat minus Republican)
+      minimum: -100
+      maximum: 100
+    dem_margin_actual:
+      type: number
+      role: measure
+      nullable: false
+      unit: percentage points (Democrat minus Republican)
+      minimum: -100
+      maximum: 100
+    signed_error:
+      type: number
+      role: measure
+      nullable: false
+      unit: percentage points
+      minimum: -100
+      maximum: 100
+    absolute_error:
+      type: number
+      role: measure
+      nullable: false
+      unit: percentage points
+      minimum: 0
+      maximum: 100
+    called_wrong_winner:
+      type: string
+      role: dimension
+      nullable: false
+      allowed_values: ['yes', 'no']
+- id: seats
+  source_ids:
+  - unitedstates_legislators
+  - fte_election_results
+  sample: data/sample_seats.csv
+  processed_output: data/processed_seats.csv
+  format: csv
+  date_column: last_election_date
+  primary_key:
+  - state
+  - seat_class
+  minimum_rows: 35
+  latest_observation: '2024-11-05'
+  columns:
+    state:
+      type: string
+      role: geography
+      nullable: false
+      allowed_values: [AK, AL, AR, CO, DE, FL, GA, IA, ID, IL, KS, KY, LA, MA, ME, MI, MN, MS, MT, NC, NE, NH,
+        NJ, NM, OH, OK, OR, RI, SC, SD, TN, TX, VA, WV, WY]
+    state_name:
+      type: string
+      role: geography
+      nullable: false
+    seat_class:
+      type: string
+      role: dimension
+      nullable: false
+      allowed_values: [Class II, Class III]
+    election_type:
+      type: string
+      role: dimension
+      nullable: false
+      allowed_values: [Regular, Special]
+    incumbent:
+      type: string
+      role: dimension
+      nullable: false
+    incumbent_party:
+      type: string
+      role: dimension
+      nullable: false
+      allowed_values: [Democrat, Republican]
+    incumbent_since:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '2021-01-03'
+      date_maximum: '2026-10-15'
+    last_election_cycle:
+      type: integer
+      role: time
+      nullable: false
+      allowed_values: [2020, 2022, 2024]
+    last_election_stage:
+      type: string
+      role: dimension
+      nullable: false
+      allowed_values: [general, runoff, jungle primary]
+    last_election_date:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '2020-11-03'
+      date_maximum: '2024-11-05'
+    last_winner_party:
+      type: string
+      role: dimension
+      nullable: false
+      allowed_values: [Democrat, Republican]
+    last_dem_margin:
+      type: number
+      role: measure
+      nullable: true
+      unit: percentage points (Democrat minus Republican)
+      minimum: -100
+      maximum: 100
+    pres_2024_dem_margin:
+      type: number
+      role: measure
+      nullable: false
+      unit: percentage points (Democrat minus Republican)
+      minimum: -100
+      maximum: 100
+    last_margin_size:
+      type: number
+      role: measure
+      nullable: true
+      unit: percentage points
+      minimum: 0
+      maximum: 100
+    senate_minus_pres_margin:
+      type: number
+      role: measure
+      nullable: true
+      unit: percentage points
+      minimum: -200
+      maximum: 200
+views:
+- id: polling_error_history
+  dataset_id: polls
+  page: app.py
+  title: How wrong have pre-election polls been?
+  unit: percentage points
+  source_ids:
+  - fte_raw_polls
+  controls:
+  - key: error_race_types
+    type: multiselect
+    label: Race types
+    default_value: [Senate, Governor, House, President]
+    test_value: [Senate]
+    empty_test_value: []
+    empty_expected_text: No polls match the selected race types, cycles and timing.
+    filter:
+      column: race_type
+      operator: isin
+  - key: error_cycles
+    type: slider
+    label: Election cycles
+    default_value: [1998, 2022]
+    test_value: [2014, 2022]
+    filter:
+      column: cycle
+      operator: range
+  - key: error_days
+    type: slider
+    label: Days before election (median field date)
+    default_value: [1, 61]
+    test_value: [1, 7]
+    filter:
+      column: days_to_election
+      operator: range
+  - key: error_weighting
+    type: radio
+    label: Averaging
+    default_value: Each poll counts once
+    test_value: Each race counts once
+  outputs:
+  - chart
+  - metric
+  - table
+  - download
+- id: senate_2026_exposure
+  dataset_id: seats
+  page: app.py
+  title: Which 2026 Senate seats sit inside the historical polling error?
+  unit: percentage points
+  source_ids:
+  - unitedstates_legislators
+  - fte_election_results
+  - fte_raw_polls
+  controls:
+  - key: seat_parties
+    type: multiselect
+    label: Party holding the seat
+    default_value: [Democrat, Republican]
+    test_value: [Republican]
+    empty_test_value: []
+    empty_expected_text: No 2026 Senate seats match the selected parties.
+    filter:
+      column: incumbent_party
+      operator: isin
+  - key: seat_error_band
+    type: selectbox
+    label: Historical Senate polling error band
+    default_value: 90th percentile
+    test_value: Median (50th percentile)
+  - key: seat_baseline
+    type: radio
+    label: Baseline margin
+    default_value: Last Senate result for the seat
+    test_value: 2024 presidential result in the state
+  outputs:
+  - chart
+  - metric
+  - table
+  - download
+pipeline:
+  acquisition_method: script
+  acquisition_path: src/data.py
+  transform_command:
+  - python
+  - -m
+  - src.data
+  download_declared: true
+  download_label: Download filtered data (CSV)
+  date_label: Latest observation
+topic_integrity:
+  office: U.S. Senate for the 2026 seat analysis (33 Class II seats plus special elections for Ohio's and Florida's
+    Class III seats); the historical polling-error analysis covers Senate, governor, U.S. House and presidential
+    general elections.
+  geography: States (statewide Senate and presidential contests); historical House polls are for individual
+    congressional districts.
+  data_status: Historical, certified results and archived polls only (1998-2024). No 2026 polls, forecasts or
+    results are included; election day is 3 November 2026, after this snapshot. Incumbents reflect the roster
+    retrieved on 15 October 2026 and say nothing about who is on the 2026 ballot.
+  timestamp_timezone: All dates are calendar dates without time of day; poll dates are the median field date and
+    election dates are local election days in US time zones. Retrieval dates are in Australia/Sydney time (AEDT).
+  field_dates: Only the median field date (polldate) is available; start and end dates are not in the source.
+  population: Not recorded in raw_polls.csv; likely-voter, registered-voter and adult samples are pooled.
+  mode: Survey mode from the 538 methodology field (for example Live Phone, IVR, Online Panel); missing for about
+    a fifth of the poll questions.
+  sample_size: Reported sample size; 538 notes that missing sizes were imputed with the median for similar races.
+  result_authority: State election offices, compiled by FiveThirtyEight (each result row cites its official source).
+  certification_status: Certified final results for 1998-2024 contests; 2026 contests are not yet held.

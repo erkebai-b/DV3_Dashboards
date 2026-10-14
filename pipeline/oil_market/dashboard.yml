@@ -1,0 +1,389 @@
+schema_version: 2
+dashboard:
+  title: 'Oil market: where demand is growing, who supplies it, and how prices responded'
+  subject: oil_market
+  question: Since 2000, which regions and countries have driven oil demand, which regions supply the gap,
+    and how have Brent and WTI prices moved through the major shocks?
+  audience: Energy-policy analysts and graduate students preparing briefings on oil market fundamentals
+  entrypoint: app.py
+  pages: []
+  sample_environment_variable: DASHBOARD_SAMPLE_MODE
+sources:
+- id: eia_spot_prices
+  publisher: U.S. Energy Information Administration (EIA)
+  title: 'Spot Prices for Crude Oil and Petroleum Products: Europe Brent (RBRTE) and Cushing, OK WTI (RWTC),
+    monthly averages'
+  url: https://www.eia.gov/dnav/pet/pet_pri_spt_s1_m.htm
+  licence: U.S. Government work, public domain; EIA asks for attribution
+  retrieved: '2026-10-15'
+  cadence: Daily prices, monthly averages published after month end
+  status: snapshot
+  notes: Original publisher of both benchmark series. Acquired through the DataHub republication below,
+    which carries the EIA values unchanged.
+- id: datahub_oil_prices
+  publisher: DataHub (Datopian)
+  title: Brent and WTI Spot Prices (core/oil-prices)
+  url: https://github.com/datasets/oil-prices
+  licence: Open Data Commons Public Domain Dedication and License (ODC-PDDL) 1.0
+  retrieved: '2026-10-15'
+  cadence: Automated daily refresh from the EIA API
+  status: snapshot
+  notes: Files data/brent-monthly.csv and data/wti-monthly.csv, commit of 14 October 2026. Monthly values
+    are dated to the 15th upstream; the pipeline restamps them to the first of the month.
+- id: ei_statistical_review
+  publisher: Energy Institute
+  title: Statistical Review of World Energy 2025
+  url: https://www.energyinst.org/statistical-review
+  licence: Free reuse with attribution to the Energy Institute Statistical Review of World Energy
+  retrieved: '2026-10-15'
+  cadence: Annual edition each June/July, revising earlier years
+  status: snapshot
+  notes: Original source of oil production and consumption; values reach this dashboard through the Our
+    World in Data compilation, converted to terawatt-hours.
+- id: owid_energy_data
+  publisher: Our World in Data
+  title: Energy dataset (owid/energy-data)
+  url: https://github.com/owid/energy-data
+  licence: Creative Commons Attribution 4.0 (CC BY 4.0); third-party data under the original source's terms
+  retrieved: '2026-10-15'
+  cadence: Updated after each source release
+  status: snapshot
+  notes: File owid-energy-data.csv; codebook attributes oil_production, oil_consumption, oil_share_energy
+    and oil_energy_per_capita to the Energy Institute Statistical Review of World Energy (2025).
+datasets:
+- id: prices
+  source_ids:
+  - eia_spot_prices
+  - datahub_oil_prices
+  sample: data/sample.csv
+  processed_output: data/processed.csv
+  format: csv
+  date_column: date
+  primary_key:
+  - date
+  - benchmark
+  minimum_rows: 100
+  latest_observation: '2026-09-01'
+  columns:
+    date:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '1990-01-01'
+      date_maximum: '2026-09-01'
+    benchmark:
+      type: string
+      role: dimension
+      nullable: false
+      allowed_values:
+      - Brent
+      - WTI
+    price_usd_per_bbl:
+      type: number
+      role: measure
+      nullable: false
+      unit: US dollars per barrel
+      minimum: 0
+      maximum: 250
+    change_12m_pct:
+      type: number
+      role: measure
+      nullable: true
+      unit: percent
+      minimum: -100
+      maximum: 400
+- id: regions
+  source_ids:
+  - ei_statistical_review
+  - owid_energy_data
+  sample: data/sample_regions.csv
+  processed_output: data/processed_regions.csv
+  format: csv
+  date_column: date
+  primary_key:
+  - year
+  - region
+  minimum_rows: 100
+  latest_observation: '2024-12-31'
+  columns:
+    date:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '1965-12-31'
+      date_maximum: '2024-12-31'
+    year:
+      type: integer
+      role: time
+      nullable: false
+    region:
+      type: string
+      role: geography
+      nullable: false
+      allowed_values:
+      - Africa
+      - Asia Pacific
+      - CIS
+      - Europe
+      - Middle East
+      - North America
+      - South and Central America
+      - World
+    oil_production_twh:
+      type: number
+      role: measure
+      nullable: false
+      unit: terawatt-hours (TWh)
+      minimum: 0
+      maximum: 70000
+    oil_consumption_twh:
+      type: number
+      role: measure
+      nullable: false
+      unit: terawatt-hours (TWh)
+      minimum: 0
+      maximum: 70000
+    net_balance_twh:
+      type: number
+      role: measure
+      nullable: false
+      unit: terawatt-hours (TWh)
+      minimum: -30000
+      maximum: 30000
+    share_of_world_production_pct:
+      type: number
+      role: measure
+      nullable: false
+      unit: percent of world total
+      minimum: 0
+      maximum: 100
+    share_of_world_consumption_pct:
+      type: number
+      role: measure
+      nullable: false
+      unit: percent of world total
+      minimum: 0
+      maximum: 100
+- id: countries
+  source_ids:
+  - ei_statistical_review
+  - owid_energy_data
+  sample: data/sample_countries.csv
+  processed_output: data/processed_countries.csv
+  format: csv
+  date_column: date
+  primary_key:
+  - year
+  - country
+  minimum_rows: 100
+  latest_observation: '2024-12-31'
+  columns:
+    date:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '2000-12-31'
+      date_maximum: '2024-12-31'
+    year:
+      type: integer
+      role: time
+      nullable: false
+    country:
+      type: string
+      role: geography
+      nullable: false
+      allowed_values:
+      - World
+      - United States
+      - China
+      - India
+      - Japan
+      - Russia
+      - Saudi Arabia
+      - Brazil
+      - South Korea
+      - Canada
+      - Germany
+      - Mexico
+      - Indonesia
+      - France
+      - United Kingdom
+      - Norway
+    oil_consumption_twh:
+      type: number
+      role: measure
+      nullable: false
+      unit: terawatt-hours (TWh)
+      minimum: 0
+      maximum: 70000
+    consumption_index_2019:
+      type: number
+      role: measure
+      nullable: false
+      unit: index (2019 = 100)
+      minimum: 0
+      maximum: 400
+    oil_share_energy_pct:
+      type: number
+      role: measure
+      nullable: false
+      unit: percent of primary energy
+      minimum: 0
+      maximum: 100
+    oil_per_capita_kwh:
+      type: number
+      role: measure
+      nullable: false
+      unit: kilowatt-hours per person
+      minimum: 0
+      maximum: 150000
+views:
+- id: demand_shift
+  dataset_id: countries
+  page: app.py
+  title: Is oil demand bending?
+  unit: index (2019 = 100)
+  source_ids:
+  - ei_statistical_review
+  - owid_energy_data
+  controls:
+  - key: demand_countries
+    type: multiselect
+    label: Countries
+    default_value:
+    - World
+    - United States
+    - China
+    - India
+    - Japan
+    - Germany
+    test_value:
+    - World
+    - China
+    empty_test_value: []
+    empty_expected_text: No country records match the selected countries.
+    filter:
+      column: country
+      operator: isin
+  - key: demand_measure
+    type: radio
+    label: Measure
+    default_value: Consumption index (2019 = 100)
+    test_value: Oil share of primary energy (%)
+  outputs:
+  - chart
+  - metric
+  - table
+  - download
+- id: regional_balance
+  dataset_id: regions
+  page: app.py
+  title: Regional oil production, consumption and net balance
+  unit: terawatt-hours (TWh)
+  source_ids:
+  - ei_statistical_review
+  - owid_energy_data
+  controls:
+  - key: balance_regions
+    type: multiselect
+    label: Regions
+    default_value:
+    - Africa
+    - Asia Pacific
+    - CIS
+    - Europe
+    - Middle East
+    - North America
+    - South and Central America
+    test_value:
+    - Asia Pacific
+    - Middle East
+    empty_test_value: []
+    empty_expected_text: No regional balance records match the selected regions and years.
+    filter:
+      column: region
+      operator: isin
+  - key: balance_years
+    type: slider
+    label: Years
+    default_value:
+    - 1965
+    - 2024
+    test_value:
+    - 2000
+    - 2024
+    filter:
+      column: year
+      operator: range
+  - key: balance_measure
+    type: radio
+    label: Measure
+    default_value: Net balance (production minus consumption)
+    test_value: Consumption
+  outputs:
+  - chart
+  - metric
+  - download
+- id: price_history
+  dataset_id: prices
+  page: app.py
+  title: Brent and WTI monthly spot prices
+  unit: US dollars per barrel
+  source_ids:
+  - eia_spot_prices
+  - datahub_oil_prices
+  controls:
+  - key: price_benchmarks
+    type: multiselect
+    label: Benchmarks
+    default_value:
+    - Brent
+    - WTI
+    test_value:
+    - Brent
+    empty_test_value: []
+    empty_expected_text: No price observations match the selected benchmarks and period.
+    filter:
+      column: benchmark
+      operator: isin
+  - key: price_period
+    type: slider
+    label: Period
+    default_value:
+    - '1990-01-01'
+    - '2026-09-01'
+    test_value:
+    - '2019-01-01'
+    - '2026-09-01'
+    filter:
+      column: date
+      operator: range
+  outputs:
+  - chart
+  - metric
+  - download
+pipeline:
+  acquisition_method: script
+  acquisition_path: src/data.py
+  transform_command:
+  - python
+  - -m
+  - src.data
+  download_declared: true
+  download_label: Download filtered data (CSV)
+  date_label: Latest observation
+topic_integrity:
+  physical_units: Prices in nominal US dollars per barrel; production and consumption in terawatt-hours
+    (TWh) of primary energy per year, converted by Our World in Data from the Energy Institute's
+    original volumes; oil share in percent of primary energy (substitution method); per-person use in kWh.
+  frequency: Prices monthly (average of daily spot prices); production and consumption annual (calendar year).
+  observation_status: Observed historical values only. Prices are final EIA spot assessments; annual
+    balances are Energy Institute estimates that are revised in later editions. No forecasts or nowcasts.
+  publication_vintage: EIA series via DataHub core/oil-prices commit of 14 October 2026 (latest month
+    September 2026); Energy Institute Statistical Review of World Energy 2025 edition via owid/energy-data
+    (latest year 2024); both retrieved 15 October 2026.
+  grade_or_contract: Europe Brent spot price FOB (EIA RBRTE) and West Texas Intermediate spot price FOB
+    at Cushing, Oklahoma (EIA RWTC); physical spot assessments, not futures contracts.
+  location: Brent is priced FOB in the North Sea (Europe); WTI is priced at the Cushing, Oklahoma hub (United States).
+  balance_definition: Net balance is Energy Institute production minus consumption for the same region and
+    year; it signals dependence on trade but is not a measured trade flow.

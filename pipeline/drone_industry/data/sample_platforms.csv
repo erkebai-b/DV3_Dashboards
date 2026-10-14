@@ -1,0 +1,57 @@
+snapshot_date,side,platform,origin_country,oryx_category,identification_basis,destroyed,damaged,abandoned,captured,total
+2026-05-03,Russia,Orlan-10,Russia,Reconnaissance Unmanned Aerial Vehicles,Oryx category,132,0,0,100,232
+2026-05-03,Russia,ZALA Z-16 (421-16E),Russia,Not mapped by tracker,Platform name,146,0,1,60,207
+2026-05-03,Russia,Supercam S350,Russia,Reconnaissance Unmanned Aerial Vehicles,Oryx category,71,0,0,65,136
+2026-05-03,Russia,Eleron-3,Russia,Reconnaissance Unmanned Aerial Vehicles,Oryx category,14,0,0,24,38
+2026-05-03,Russia,Orlan-30,Russia,Reconnaissance Unmanned Aerial Vehicles,Oryx category,13,0,0,15,28
+2026-05-03,Russia,Ptero-G0 'Kartograf',Russia,Not mapped by tracker,Platform name,16,1,0,4,21
+2026-05-03,Russia,Eleron T28ME,Russia,Reconnaissance Unmanned Aerial Vehicles,Oryx category,7,0,0,11,18
+2026-05-03,Russia,Merlin-VR,Russia,Reconnaissance Unmanned Aerial Vehicles,Oryx category,8,0,0,8,16
+2026-05-03,Russia,Orion,Russia,Unmanned Combat Aerial Vehicles,Oryx category,11,0,0,0,11
+2026-05-03,Russia,Granat-4,Russia,Reconnaissance Unmanned Aerial Vehicles,Oryx category,6,0,0,4,10
+2026-05-03,Russia,Orlan-10 jamming UAV,Russia,Reconnaissance Unmanned Aerial Vehicles,Oryx category,3,0,0,4,7
+2026-05-03,Russia,Takhion,Russia,Reconnaissance Unmanned Aerial Vehicles,Oryx category,2,0,0,5,7
+2026-05-03,Russia,ZALA Z-20,Russia,Not mapped by tracker,Platform name,3,0,0,3,6
+2026-05-03,Russia,Forpost,Israel,Reconnaissance Unmanned Aerial Vehicles,Oryx category,5,0,0,0,5
+2026-05-03,Russia,Eleron-10,Russia,Not mapped by tracker,Platform name,1,0,0,3,4
+2026-05-03,Russia,Albatros M5 reconnaissance UAV,Russia,Not mapped by tracker,Platform name,1,0,0,2,3
+2026-05-03,Russia,Mohajer-6,Iran,Unmanned Combat Aerial Vehicles,Oryx category,2,1,0,0,3
+2026-05-03,Russia,Orlan-10 UCAV,Russia,Unmanned Combat Aerial Vehicles,Oryx category,1,0,0,2,3
+2026-05-03,Russia,ZALA 421-16EM,Russia,Not mapped by tracker,Platform name,0,0,0,2,2
+2026-05-03,Russia,Eleron T-16,Russia,Unmanned Combat Aerial Vehicles,Oryx category,0,0,0,1,1
+2026-05-03,Russia,Eleron-3SV,Russia,Not mapped by tracker,Platform name,1,0,0,0,1
+2026-05-03,Russia,Forpost-RU,Russia,Unmanned Combat Aerial Vehicles,Oryx category,1,0,0,0,1
+2026-05-03,Russia,Granat-3,Russia,Reconnaissance Unmanned Aerial Vehicles,Oryx category,1,0,0,0,1
+2026-05-03,Russia,Grifon-12,Russia,Reconnaissance Unmanned Aerial Vehicles,Oryx category,0,0,0,1,1
+2026-05-03,Russia,Korsar,Russia,Unmanned Combat Aerial Vehicles,Oryx category,1,0,0,0,1
+2026-05-03,Russia,Lastochka-M,Russia,Reconnaissance Unmanned Aerial Vehicles,Oryx category,0,0,0,1,1
+2026-05-03,Russia,Supercam S150,Russia,Reconnaissance Unmanned Aerial Vehicles,Oryx category,0,0,0,1,1
+2026-05-03,Ukraine,Leleka-100,Ukraine,Unmanned Aerial Vehicles,Oryx category,104,1,0,58,163
+2026-05-03,Ukraine,A1-SM Fury,Ukraine,Unmanned Aerial Vehicles,Oryx category,67,0,0,80,147
+2026-05-03,Ukraine,ASU-1 Valkyrja,Ukraine,Unmanned Aerial Vehicles,Oryx category,47,0,0,8,55
+2026-05-03,Ukraine,Shark-D,Ukraine,Not mapped by tracker,Platform name,27,0,0,6,33
+2026-05-03,Ukraine,AeroVironment RQ-20 Puma,United States,Unmanned Aerial Vehicles,Oryx category,14,1,0,13,28
+2026-05-03,Ukraine,FlyEye,Poland,Unmanned Aerial Vehicles,Oryx category,14,0,0,11,25
+2026-05-03,Ukraine,Bayraktar TB2,Turkey,Not mapped by tracker,Platform name,23,0,0,0,23
+2026-05-03,Ukraine,Penguin C,Latvia,Unmanned Aerial Vehicles,Oryx category,4,0,0,4,8
+2026-05-03,Ukraine,Spectator-M1,Ukraine,Unmanned Aerial Vehicles,Oryx category,4,0,0,2,6
+2026-05-03,Ukraine,Boeing Insitu ScanEagle 2,United States,Reconnaissance Unmanned Aerial Vehicles,Oryx category,4,0,0,1,5
+2026-05-03,Ukraine,ITEC Skif,Ukraine,Unmanned Aerial Vehicles,Oryx category,3,0,0,1,4
+2026-05-03,Ukraine,Leleka-LR,Ukraine,Not mapped by tracker,Platform name,4,0,0,0,4
+2026-05-03,Ukraine,Malloy Aeronautics T150 cargo UAV,United Kingdom,Unmanned Aerial Vehicles,Oryx category,1,0,0,3,4
+2026-05-03,Ukraine,Primoco One 150,Czech Republic,Reconnaissance Unmanned Aerial Vehicles,Oryx category,4,0,0,0,4
+2026-05-03,Ukraine,Raybird-3,Ukraine,Not mapped by tracker,Platform name,4,0,0,0,4
+2026-05-03,Ukraine,Spaitech Sparrow,Ukraine,Unmanned Aerial Vehicles,Oryx category,1,0,0,3,4
+2026-05-03,Ukraine,Unknown reconnaissance UAV,Ukraine,Reconnaissance Unmanned Aerial Vehicles,Oryx category,3,0,0,1,4
+2026-05-03,Ukraine,EOS-C VTOL,Estonia,Reconnaissance Unmanned Aerial Vehicles,Oryx category,2,0,0,1,3
+2026-05-03,Ukraine,Quantum Vector UAV,Germany,Not mapped by tracker,Platform name,2,0,0,1,3
+2026-05-03,Ukraine,Shark-M,Ukraine,Not mapped by tracker,Platform name,1,0,0,2,3
+2026-05-03,Ukraine,Bayraktar Mini,Turkey,Unmanned Aerial Vehicles,Oryx category,1,0,0,1,2
+2026-05-03,Ukraine,Chaklun,Ukraine,Reconnaissance Unmanned Aerial Vehicles,Oryx category,1,0,0,1,2
+2026-05-03,Ukraine,Mini Shark-D,Ukraine,Not mapped by tracker,Platform name,2,0,0,0,2
+2026-05-03,Ukraine,Orlik,Czech Republic,Reconnaissance Unmanned Aerial Vehicles,Oryx category,1,0,0,1,2
+2026-05-03,Ukraine,PD-1,Ukraine,Unmanned Aerial Vehicles,Oryx category,1,0,0,1,2
+2026-05-03,Ukraine,Poseidon H10,Cyprus,Reconnaissance Unmanned Aerial Vehicles,Oryx category,2,0,0,0,2
+2026-05-03,Ukraine,Punisher,Ukraine,Not mapped by tracker,Platform name,1,0,0,1,2
+2026-05-03,Ukraine,UJ-22,Ukraine,Unmanned Aerial Vehicles,Oryx category,2,0,0,0,2
+2026-05-03,Ukraine,AeroVironment Quantix Recon UAV,United States,Reconnaissance Unmanned Aerial Vehicles,Oryx category,0,0,0,1,1

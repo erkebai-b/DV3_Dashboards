@@ -1,0 +1,51 @@
+{
+  "dashboards": {
+    "oil": {
+      "prices": {
+        "file": "/data/oil/prices.csv",
+        "rows": 882,
+        "latest_observation": "2026-09-01"
+      },
+      "regions": {
+        "file": "/data/oil/regions.csv",
+        "rows": 480,
+        "latest_observation": "2024-12-31"
+      },
+      "countries": {
+        "file": "/data/oil/countries.csv",
+        "rows": 400,
+        "latest_observation": "2024-12-31"
+      }
+    },
+    "elections": {
+      "polls": {
+        "file": "/data/elections/polls.csv",
+        "rows": 16672,
+        "latest_observation": "2022-12-06"
+      },
+      "seats": {
+        "file": "/data/elections/seats.csv",
+        "rows": 35,
+        "latest_observation": "2024-11-05"
+      }
+    },
+    "drones": {
+      "comparison": {
+        "file": "/data/drones/comparison.csv",
+        "rows": 50,
+        "latest_observation": "2026-04-30"
+      },
+      "claims": {
+        "file": "/data/drones/claims.csv",
+        "rows": 224,
+        "latest_observation": "2026-09-30"
+      },
+      "platforms": {
+        "file": "/data/drones/platforms.csv",
+        "rows": 56,
+        "latest_observation": "2026-05-03"
+      }
+    }
+  },
+  "refreshed_at": "2026-10-14T19:00:18Z"
+}

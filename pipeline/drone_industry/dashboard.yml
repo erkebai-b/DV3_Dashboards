@@ -1,0 +1,374 @@
+schema_version: 2
+dashboard:
+  title: 'Drone losses in the Russia–Ukraine war: claimed, verified, and which platforms'
+  subject: drone_industry
+  question: How fast have drone losses grown in the Russia–Ukraine war, how far apart are official claims and
+    photo-verified evidence, and which platforms and countries of origin dominate the verified record?
+  audience: Journalists, analysts and students who cite drone-loss figures and need to know what each number does
+    and does not measure
+  entrypoint: app.py
+  pages: []
+  sample_environment_variable: DASHBOARD_SAMPLE_MODE
+sources:
+- id: general_staff_reports
+  publisher: General Staff of the Armed Forces of Ukraine
+  title: Daily reports on Russian combat losses
+  url: https://www.zsu.gov.ua/en
+  licence: Official statements published for public use; no explicit licence. Reused here only as structured
+    by the MIT-licensed dataset below
+  retrieved: '2026-10-15'
+  cadence: Daily
+  status: snapshot
+  notes: Original claimant. Cumulative totals by equipment category; the drone figure has no platform breakdown.
+- id: ivaniuk_dataset
+  publisher: Petro Ivaniuk
+  title: Russian equipment losses (2022 Ukraine Russia War Dataset)
+  url: https://github.com/PetroIvaniuk/2022-Ukraine-Russia-War-Dataset
+  licence: MIT License
+  retrieved: '2026-10-15'
+  cadence: Daily
+  status: snapshot
+  notes: File data/russia_losses_equipment.json (24 February 2022 to 14 October 2026 at retrieval); a companion
+    file lists corrections the General Staff made to its running totals.
+- id: oryx_list
+  publisher: Oryx
+  title: 'Attack On Europe: Documenting Equipment Losses'
+  url: https://www.oryxspioenkop.com/2022/02/attack-on-europe-documenting-equipment.html
+  licence: Publicly accessible list with no open licence stated; only aggregated counts and platform names are
+    reused, via the archive below
+  retrieved: '2026-10-15'
+  cadence: Updated continuously as photo or video evidence is published
+  status: snapshot
+  notes: Original verifier. Lists only losses with photographic or videographic evidence for both sides; munitions
+    are excluded.
+- id: drake_archive
+  publisher: Lee Drake
+  title: Oryx equipment loss archive (leedrake5/Russia-Ukraine)
+  url: https://github.com/leedrake5/Russia-Ukraine
+  licence: MIT License
+  retrieved: '2026-10-15'
+  cadence: Daily scrape of the Oryx list
+  status: snapshot
+  notes: Files data/byType/YYYY-MM-DD.csv (latest daily file of each month to April 2026, plus 2026-05-03),
+    data/bySystem/Raw/Full/2026-05-03.csv and data/classes.csv.
+datasets:
+- id: comparison
+  source_ids:
+  - general_staff_reports
+  - ivaniuk_dataset
+  - oryx_list
+  - drake_archive
+  sample: data/sample.csv
+  processed_output: data/processed.csv
+  format: csv
+  date_column: month_end
+  primary_key:
+  - month_end
+  minimum_rows: 24
+  latest_observation: '2026-04-30'
+  columns:
+    month_end:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '2022-03-31'
+      date_maximum: '2026-04-30'
+    oryx_snapshot_date:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '2022-03-01'
+      date_maximum: '2026-04-30'
+    claimed_russian_drones:
+      type: integer
+      role: measure
+      nullable: false
+      unit: drones (cumulative)
+      minimum: 0
+      maximum: 5000000
+    verified_russian_uavs:
+      type: integer
+      role: measure
+      nullable: false
+      unit: drones (cumulative)
+      minimum: 0
+      maximum: 100000
+    verified_ukrainian_uavs:
+      type: integer
+      role: measure
+      nullable: false
+      unit: drones (cumulative)
+      minimum: 0
+      maximum: 100000
+    claims_per_verified_loss:
+      type: number
+      role: measure
+      nullable: false
+      unit: ratio (claimed per verified)
+      minimum: 0
+      maximum: 100000
+- id: claims
+  source_ids:
+  - general_staff_reports
+  - ivaniuk_dataset
+  sample: data/sample_claims.csv
+  processed_output: data/processed_claims.csv
+  format: csv
+  date_column: month_end
+  primary_key:
+  - month_end
+  - category
+  minimum_rows: 100
+  latest_observation: '2026-09-30'
+  columns:
+    month_end:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '2022-02-28'
+      date_maximum: '2026-09-30'
+    last_report_date:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '2022-02-27'
+      date_maximum: '2026-09-30'
+    category:
+      type: string
+      role: dimension
+      nullable: false
+      allowed_values:
+      - Drones (UAVs)
+      - Tanks
+      - Artillery systems
+      - Armoured combat vehicles
+    claimed_cumulative:
+      type: integer
+      role: measure
+      nullable: false
+      unit: items claimed (cumulative)
+      minimum: 0
+      maximum: 5000000
+    reports_in_month:
+      type: integer
+      role: measure
+      nullable: false
+      unit: daily reports
+      minimum: 1
+      maximum: 31
+    claimed_in_month:
+      type: integer
+      role: measure
+      nullable: false
+      unit: items claimed per month
+      minimum: -10000
+      maximum: 1000000
+- id: platforms
+  source_ids:
+  - oryx_list
+  - drake_archive
+  sample: data/sample_platforms.csv
+  processed_output: data/processed_platforms.csv
+  format: csv
+  date_column: snapshot_date
+  primary_key:
+  - side
+  - platform
+  - origin_country
+  minimum_rows: 20
+  latest_observation: '2026-05-03'
+  columns:
+    snapshot_date:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '2026-05-03'
+      date_maximum: '2026-05-03'
+    side:
+      type: string
+      role: dimension
+      nullable: false
+      allowed_values:
+      - Russia
+      - Ukraine
+    platform:
+      type: string
+      role: identifier
+      nullable: false
+    origin_country:
+      type: string
+      role: geography
+      nullable: false
+    oryx_category:
+      type: string
+      role: dimension
+      nullable: false
+      allowed_values:
+      - Reconnaissance Unmanned Aerial Vehicles
+      - Unmanned Combat Aerial Vehicles
+      - Unmanned Aerial Vehicles
+      - Not mapped by tracker
+    identification_basis:
+      type: string
+      role: dimension
+      nullable: false
+      allowed_values:
+      - Oryx category
+      - Platform name
+    destroyed:
+      type: integer
+      role: measure
+      nullable: false
+      unit: drones
+      minimum: 0
+      maximum: 10000
+    damaged:
+      type: integer
+      role: measure
+      nullable: false
+      unit: drones
+      minimum: 0
+      maximum: 10000
+    abandoned:
+      type: integer
+      role: measure
+      nullable: false
+      unit: drones
+      minimum: 0
+      maximum: 10000
+    captured:
+      type: integer
+      role: measure
+      nullable: false
+      unit: drones
+      minimum: 0
+      maximum: 10000
+    total:
+      type: integer
+      role: measure
+      nullable: false
+      unit: drones
+      minimum: 1
+      maximum: 10000
+views:
+- id: claims_vs_verified
+  dataset_id: comparison
+  page: app.py
+  title: 'Claimed versus photo-verified: Russian drone losses'
+  unit: drones
+  source_ids:
+  - general_staff_reports
+  - ivaniuk_dataset
+  - oryx_list
+  - drake_archive
+  controls:
+  - key: compare_period
+    type: slider
+    label: Period
+    default_value: ['2022-03-31', '2026-04-30']
+    test_value: ['2025-01-31', '2026-04-30']
+    filter:
+      column: month_end
+      operator: range
+  - key: compare_scale
+    type: radio
+    label: Vertical scale
+    default_value: Logarithmic
+    test_value: Linear
+  outputs:
+  - chart
+  - metric
+  - table
+  - download
+- id: claims_by_category
+  dataset_id: claims
+  page: app.py
+  title: How the claimed loss mix shifted to drones
+  unit: items claimed destroyed per calendar month
+  source_ids:
+  - general_staff_reports
+  - ivaniuk_dataset
+  controls:
+  - key: claims_categories
+    type: multiselect
+    label: Categories
+    default_value: [Drones (UAVs), Tanks, Artillery systems, Armoured combat vehicles]
+    test_value: [Drones (UAVs), Tanks]
+    empty_test_value: []
+    empty_expected_text: No claimed-loss records match the selected categories and period.
+    filter:
+      column: category
+      operator: isin
+  - key: claims_period
+    type: slider
+    label: Period
+    default_value: ['2022-02-28', '2026-09-30']
+    test_value: ['2024-01-31', '2026-09-30']
+    filter:
+      column: month_end
+      operator: range
+  outputs:
+  - chart
+  - metric
+  - download
+- id: verified_platforms
+  dataset_id: platforms
+  page: app.py
+  title: Which drone platforms dominate the photo-verified record?
+  unit: drones
+  source_ids:
+  - oryx_list
+  - drake_archive
+  controls:
+  - key: platform_side
+    type: radio
+    label: Side that lost the equipment
+    default_value: Russia
+    test_value: Ukraine
+    filter:
+      column: side
+      operator: equals
+  - key: platform_origins
+    type: multiselect
+    label: Country of origin
+    default_value: [Cyprus, Czech Republic, Estonia, Germany, Iran, Israel, Latvia, Poland, Russia, Turkey, Ukraine,
+      United Kingdom, United States]
+    test_value: [Russia]
+    empty_test_value: []
+    empty_expected_text: No platforms match the selected side and countries of origin.
+    filter:
+      column: origin_country
+      operator: isin
+  outputs:
+  - chart
+  - metric
+  - table
+  - download
+pipeline:
+  acquisition_method: script
+  acquisition_path: src/data.py
+  transform_command:
+  - python
+  - -m
+  - src.data
+  download_declared: true
+  download_label: Download filtered data (CSV)
+  date_label: Latest observation
+topic_integrity:
+  drone_definition: Any uncrewed aerial vehicle (UAV). The General Staff reports one undifferentiated "drones"
+    total; Oryx counts identifiable airframes in its UAV categories (a single UAV category until November 2022,
+    then reconnaissance and combat UAVs) and excludes munitions.
+  count_basis: Claims are cumulative items claimed destroyed, taken at each complete month's last daily report and
+    differenced into monthly values. Verified losses are cumulative documented items (destroyed, damaged, abandoned
+    or captured) at the last daily archive file of each month, counted when evidence is published, not when the
+    loss occurred.
+  claimant: General Staff of the Armed Forces of Ukraine for all claims (Russian losses only). Oryx is an
+    independent open-source documentation project, not a belligerent.
+  verification_status: Claims are unverified statements by a party to the war. Oryx entries each require a
+    photograph or video of the specific item, making them a verified lower bound, subject to Oryx's corrections.
+  location_confidence: Not applicable for mapping; neither source supplies event locations at a usable precision,
+    and no geographic analysis is attempted.
+  identification_confidence: Oryx identifies the platform from imagery. 'Oryx category' rows are matched through the
+    tracker's class list; 'Platform name' rows are airframes the class list leaves unmapped, identified by their
+    Oryx name. The platform list reproduces about 95% (Russia) and 92% (Ukraine) of Oryx's own UAV totals.
+  casualty_data: None used.
