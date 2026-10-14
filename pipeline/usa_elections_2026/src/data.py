@@ -67,7 +67,12 @@ DATASET_FILES = {
     "polls": ("data/sample.csv", "data/processed.csv"),
     "seats": ("data/sample_seats.csv", "data/processed_seats.csv"),
     "swing": ("data/sample_swing.csv", "data/processed_swing.csv"),
+    "polls_2026": ("data/sample_polls_2026.csv", "data/processed_polls_2026.csv"),
+    "generic_2026": ("data/sample_generic_2026.csv", "data/processed_generic_2026.csv"),
 }
+
+# Curated source: a spreadsheet maintained by hand, one row per poll, each with its source URL.
+CURATED_XLSX = DATA / "curated" / "2026_midterms.xlsx"
 
 
 # --------------------------------------------------------------------------- acquire
@@ -203,6 +208,93 @@ def transform_swing(seats: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(records).sort_values("state").reset_index(drop=True)
 
 
+def _sheet_rows(sheet_name: str, first_header: str) -> list[dict]:
+    """Rows under the header row whose first cell is `first_header`, until the first blank first cell.
+
+    Only typed input columns are read; formula columns are ignored and recomputed here, so the
+    pipeline never depends on whether Excel recalculated the file before it was saved.
+    """
+    from openpyxl import load_workbook  # imported here so offline sample mode does not need it
+
+    if not CURATED_XLSX.exists():
+        raise FileNotFoundError(f"Curated workbook missing: {CURATED_XLSX}")
+    sheet = load_workbook(CURATED_XLSX, read_only=True, data_only=True)[sheet_name]
+    rows = list(sheet.iter_rows(values_only=True))
+    start = next((i for i, row in enumerate(rows) if row and row[0] == first_header), None)
+    if start is None:
+        raise ValueError(f"No header row starting with {first_header!r} on sheet {sheet_name!r}")
+    names = [str(v).strip() if v is not None else "" for v in rows[start]]
+    records = []
+    for number, row in enumerate(rows[start + 1:], start=start + 2):
+        if row is None or row[0] is None or str(row[0]).strip() == "":
+            break
+        record = dict(zip(names, row))
+        record["_row"] = number
+        records.append(record)
+    return records
+
+
+def _iso(value, where: str) -> str:
+    """Accept a typed ISO string or an Excel date cell; reject anything else."""
+    if hasattr(value, "strftime"):
+        return value.strftime("%Y-%m-%d")
+    text = str(value or "").strip()
+    try:
+        return pd.Timestamp(text).strftime("%Y-%m-%d")
+    except (ValueError, TypeError) as error:
+        raise ValueError(f"{where}: date {value!r} is not YYYY-MM-DD") from error
+
+
+def _party(value, where: str) -> str:
+    text = str(value or "").strip().upper()
+    if text not in {"", "D", "R", "I"}:
+        raise ValueError(f"{where}: party {value!r} must be D, R, I or blank")
+    return text
+
+
+def transform_polls_2026() -> pd.DataFrame:
+    """2026 Senate polls from the curated workbook's 'Senate polls' sheet."""
+    out = []
+    for r in _sheet_rows("Senate polls", "State"):
+        where = f"Senate polls row {r['_row']}"
+        out.append({
+            "state": str(r["State code"] or "").strip().upper(),
+            "race": str(r["State"]).strip(),
+            "seat_status": str(r["Seat"] or "").strip(),
+            "candidate_1": str(r["Candidate 1"]).strip(),
+            "party_1": _party(r["Party 1"], where),
+            "pct_1": r["Candidate 1 (%)"],
+            "candidate_2": str(r["Candidate 2"]).strip(),
+            "party_2": _party(r["Party 2"], where),
+            "pct_2": r["Candidate 2 (%)"],
+            "pollster": str(r["Pollster"]).strip(),
+            "poll_date": _iso(r["Poll date"], where),
+            "sample_note": str(r["Sample note"] or "").strip(),
+            "source_url": str(r["Source URL"] or "").strip(),
+        })
+    frame = pd.DataFrame(out)
+    for column in ("pct_1", "pct_2"):
+        frame[column] = pd.to_numeric(frame[column], errors="raise").astype(float)
+    return frame.replace({"": None})
+
+
+def transform_generic_2026() -> pd.DataFrame:
+    """Generic congressional ballot readings from the curated workbook's 'National' sheet."""
+    out = []
+    for r in _sheet_rows("National", "Measure"):
+        if r.get("Democrats (%)") is None or r.get("Republicans (%)") is None:
+            continue   # notes rows such as prediction-market prices
+        out.append({
+            "measure": str(r["Measure"]).strip(),
+            "date": _iso(r["Date"], f"National row {r['_row']}"),
+            "dem_pct": float(r["Democrats (%)"]),
+            "rep_pct": float(r["Republicans (%)"]),
+            "source": str(r["Source"] or "").strip(),
+            "source_url": str(r.get("Source URL") or "").strip(),
+        })
+    return pd.DataFrame(out).replace({"": None})
+
+
 def _election_date(row: pd.Series) -> str:
     """Federal general election day of the seat's last cycle; Georgia 2020 runoff on 5 January 2021."""
     if row["last_election_stage"] == "runoff" and row["state"] == "GA" and row["last_election_cycle"] == 2020:
@@ -247,7 +339,30 @@ def derive_swing(frame: pd.DataFrame) -> pd.DataFrame:
     return frame.sort_values("state").reset_index(drop=True)
 
 
-DERIVE = {"polls": derive_polls, "seats": derive_seats, "swing": derive_swing}
+def derive_polls_2026(frame: pd.DataFrame) -> pd.DataFrame:
+    """Lead of candidate 1, and the Democrat-minus-Republican lead where both parties are stated."""
+    base = ["state", "race", "seat_status", "candidate_1", "party_1", "pct_1", "candidate_2", "party_2", "pct_2",
+            "pollster", "poll_date", "sample_note", "source_url"]
+    frame = frame[base].copy()
+    frame["lead_1"] = (frame["pct_1"] - frame["pct_2"]).round(1)
+    dem_first = (frame["party_1"] == "D") & (frame["party_2"] == "R")
+    rep_first = (frame["party_1"] == "R") & (frame["party_2"] == "D")
+    frame["dem_lead"] = None
+    frame.loc[dem_first, "dem_lead"] = frame.loc[dem_first, "lead_1"]
+    frame.loc[rep_first, "dem_lead"] = -frame.loc[rep_first, "lead_1"]
+    frame["dem_lead"] = pd.to_numeric(frame["dem_lead"]).round(1)
+    return frame.sort_values(["state", "poll_date", "pollster"]).reset_index(drop=True)
+
+
+def derive_generic_2026(frame: pd.DataFrame) -> pd.DataFrame:
+    frame = frame[["measure", "date", "dem_pct", "rep_pct", "source", "source_url"]].copy()
+    frame["dem_lead"] = (frame["dem_pct"] - frame["rep_pct"]).round(1)
+    return frame.sort_values(["date", "measure"]).reset_index(drop=True)
+
+
+DERIVE = {"polls": derive_polls, "seats": derive_seats, "swing": derive_swing,
+          "polls_2026": derive_polls_2026, "generic_2026": derive_generic_2026}
+CURATED = {"polls_2026": transform_polls_2026, "generic_2026": transform_generic_2026}
 
 
 # --------------------------------------------------------------------------- validate
@@ -312,6 +427,33 @@ def validate(frame: pd.DataFrame, spec: dict) -> None:
         raise ValueError(f"{name} failed validation: " + "; ".join(problems))
 
 
+def check_curated(frames: dict[str, pd.DataFrame]) -> None:
+    """Rules for hand-entered rows that a column contract cannot express."""
+    problems = []
+    today = pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d")
+    for name in ("polls_2026", "generic_2026"):
+        frame = frames.get(name)
+        if frame is None:
+            continue
+        bad_url = ~frame["source_url"].fillna("").str.match(r"^https?://")
+        if bad_url.any():
+            problems.append(f"{name}: {int(bad_url.sum())} row(s) without an http(s) source URL")
+        date_col = "poll_date" if name == "polls_2026" else "date"
+        if (frame[date_col] > today).any():
+            problems.append(f"{name}: dates in the future: {sorted(frame.loc[frame[date_col] > today, date_col])}")
+    polls = frames.get("polls_2026")
+    seats = frames.get("seats")
+    if polls is not None and seats is not None:
+        unknown = sorted(set(polls["state"]) - set(seats["state"]))
+        if unknown:
+            problems.append(f"polls_2026: state codes with no 2026 Senate contest: {unknown}")
+        total = polls["pct_1"] + polls["pct_2"]
+        if (total > 100).any():
+            problems.append("polls_2026: candidate shares add up to more than 100% in some rows")
+    if problems:
+        raise ValueError("Curated data failed validation: " + "; ".join(problems))
+
+
 def _cross_checks(frames: dict[str, pd.DataFrame]) -> None:
     """Checks spanning rows: every seat on the ballot appears once, and errors reproduce."""
     seats = frames["seats"]
@@ -322,6 +464,7 @@ def _cross_checks(frames: dict[str, pd.DataFrame]) -> None:
         raise ValueError(f"Expected 50 states plus DC in the swing table, found {len(swing)}")
     if set(swing.loc[swing["senate_race_2026"] == "yes", "state"]) != set(seats["state"]):
         raise ValueError("Swing table's 2026 Senate flag does not match the seats dataset")
+    check_curated(frames)
     polls = frames["polls"]
     recomputed = (polls["dem_margin_poll"] - polls["dem_margin_actual"]).abs()
     if (recomputed - polls["absolute_error"]).abs().max() > 1e-3:
@@ -337,7 +480,8 @@ def build(sample_mode: bool) -> dict[str, pd.DataFrame]:
         if not RAW.exists() or not all((RAW / name).exists() for name in RAW_SOURCES):
             acquire()
         seats = transform_seats()
-        base = {"polls": transform_polls(), "seats": seats, "swing": transform_swing(seats)}
+        base = {"polls": transform_polls(), "seats": seats, "swing": transform_swing(seats),
+                **{name: transform() for name, transform in CURATED.items()}}
     frames = {name: DERIVE[name](frame) for name, frame in base.items()}
     for name, frame in frames.items():
         validate(frame, contract[name])

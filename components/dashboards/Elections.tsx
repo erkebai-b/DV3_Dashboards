@@ -32,27 +32,39 @@ export default function ElectionsDashboard() {
     seats: { path: "/data/elections/seats.csv", numeric: ["last_election_cycle", "last_dem_margin", "pres_2024_dem_margin",
       "last_margin_size", "senate_minus_pres_margin"] },
     swing: { path: "/data/elections/swing.csv", numeric: ["dem_margin_2020", "dem_margin_2024", "swing_2020_2024"] },
+    polls2026: { path: "/data/elections/polls_2026.csv", numeric: ["pct_1", "pct_2", "lead_1", "dem_lead"] },
+    generic2026: { path: "/data/elections/generic_2026.csv", numeric: ["dem_pct", "rep_pct", "dem_lead"] },
   });
   if (state.status !== "ready") return <Loading state={state} />;
-  const { polls, seats, swing } = state.data;
+  const { polls, seats, swing, polls2026, generic2026 } = state.data;
   return (
     <>
-      <Findings items={findings(polls, seats, swing)} gaps={GAPS} />
+      <Findings items={findings(polls, seats, swing, polls2026)} gaps={GAPS} />
       <ErrorView polls={polls} />
+      <Polls2026View polls={polls} polls2026={polls2026} generic={generic2026} />
       <SwingView swing={swing} />
-      <SeatsView polls={polls} seats={seats} />
+      <SeatsView polls={polls} seats={seats} polls2026={polls2026} />
       <WorldContext />
     </>
   );
 }
 
 const GAPS = [
-  "No 2024 or 2026 polls: FiveThirtyEight's open poll archive ends with the 2022 cycle (538 closed in 2025), so the most recent polling miss is not measured here.",
+  "No polling error for 2024: FiveThirtyEight's open poll archive ends with the 2022 cycle (538 closed in 2025). 2026 polls are added by hand from cited reports, one row per poll, so coverage depends on what has been entered.",
   "No campaign finance, advertising or race ratings yet. FEC data need an API key, and rating outlets restrict reuse.",
   "Results for 3 November 2026 do not exist yet; nothing here is a forecast.",
 ];
 
-function findings(polls: Row[], seats: Row[], swing: Row[]): Finding[] {
+function latestPerState(rows: Row[]): Row[] {
+  const best = new Map<string, Row>();
+  for (const r of rows) {
+    const current = best.get(str(r, "state"));
+    if (!current || str(r, "poll_date") > str(current, "poll_date")) best.set(str(r, "state"), r);
+  }
+  return Array.from(best.values());
+}
+
+function findings(polls: Row[], seats: Row[], swing: Row[], polls2026: Row[]): Finding[] {
   const senate = polls.filter((r) => r.race_type === "Senate");
   const errors = senate.map((r) => num(r, "absolute_error"));
   const late = senate.filter((r) => num(r, "days_to_election") <= 7).map((r) => num(r, "absolute_error"));
@@ -65,7 +77,13 @@ function findings(polls: Row[], seats: Row[], swing: Row[]): Finding[] {
   const swings = swing.map((r) => num(r, "swing_2020_2024"));
   const towardR = swing.filter((r) => num(r, "swing_2020_2024") < 0).length;
   const biggest = [...swing].sort((a, b) => num(a, "swing_2020_2024") - num(b, "swing_2020_2024"))[0];
+  const latest26 = latestPerState(polls2026);
+  const meanErr = mean(errors);
+  const insideP90 = latest26.filter((r) => Math.abs(num(r, "lead_1")) <= p90).length;
+  const insideMean = latest26.filter((r) => Math.abs(num(r, "lead_1")) <= meanErr).length;
   return [
+    ...(latest26.length ? [{ text: `Of the ${latest26.length} Senate races with a 2026 poll entered, ${insideP90} show a lead smaller than a 1-in-10 historical miss (${fmt.dec(p90)} points), and ${insideMean} a lead smaller than an average miss (${fmt.dec(meanErr)} points).`,
+      stars: 3 as const, basis: "Single polls, hand-entered from cited reports; the error bands are well measured, the polls are snapshots." }] : []),
     { text: `${towardR === swing.length ? "Every one" : `${towardR}`} of the ${swing.length} states and DC moved toward the Republican presidential candidate between 2020 and 2024 (median swing ${fmt.dec(Math.abs(median(swings)))} points; largest ${str(biggest, "state_name")}, ${fmt.dec(Math.abs(num(biggest, "swing_2020_2024")))} points).`,
       stars: 5, basis: "Certified statewide results. A presidential swing is context for 2026, not a midterm forecast." },
     { text: `Across ${fmt.int(senate.length)} Senate general-election polls from ${Math.min(...cycles)}–${Math.max(...cycles)}, the average absolute error on the margin was ${fmt.dec(mean(errors))} points; polls fielded in the final week were only modestly better (${fmt.dec(mean(late))} points).`,
@@ -199,6 +217,113 @@ function ErrorView({ polls }: { polls: Row[] }) {
   );
 }
 
+/* ----------------------------------------------------------------------------- 2026 polls */
+const POLLS26_COLS = ["state", "race", "seat_status", "candidate_1", "party_1", "pct_1", "candidate_2", "party_2", "pct_2",
+  "pollster", "poll_date", "sample_note", "source_url", "lead_1", "dem_lead"];
+
+function Polls2026View({ polls, polls2026, generic }: { polls: Row[]; polls2026: Row[]; generic: Row[] }) {
+  const dark = useDarkMode();
+  const [scope, setScope] = useState("Latest poll per race");
+  const senate = useMemo(() => polls.filter((r) => r.race_type === "Senate").map((r) => num(r, "absolute_error")), [polls]);
+  const avg = mean(senate);
+  const p90 = quantile(senate, 0.9);
+  const shown = useMemo(() => (scope === "Latest poll per race" ? latestPerState(polls2026) : polls2026), [polls2026, scope]);
+  const plotted = shown.filter((r) => r.dem_lead !== null).map((r) => ({ ...r,
+    label: `${str(r, "race")}${scope === "All polls" ? ` · ${str(r, "pollster")}` : ""}`,
+    leader: num(r, "dem_lead") > 0 ? "Democrat" : num(r, "dem_lead") < 0 ? "Republican" : "Tie",
+    leadText: num(r, "dem_lead") === 0 ? "Tie" : `${num(r, "dem_lead") > 0 ? "D" : "R"}+${Math.abs(num(r, "dem_lead"))}` }));
+  const order = [...plotted].sort((a, b) => num(a, "dem_lead") - num(b, "dem_lead")).map((r) => r.label);
+  const unplotted = shown.filter((r) => r.dem_lead === null);
+  const band = (abs: number) => (abs <= avg ? "avg" : abs <= p90 ? "p90" : "out");
+  const counts = { avg: 0, p90: 0, out: 0 };
+  for (const r of shown) counts[band(Math.abs(num(r, "lead_1")))] += 1;
+  const latestDate = polls2026.map((r) => str(r, "poll_date")).sort().at(-1) ?? "–";
+
+  const spec = useMemo<TopLevelSpec>(() => ({
+    $schema: "https://vega.github.io/schema/vega-lite/v6.json", width: "container", height: { step: 30 },
+    layer: [
+      { data: { values: [{ lo: -p90, hi: p90 }] }, mark: { type: "rect", color: dark ? "#2a323d" : "#e7ebee" }, encoding: { x: { field: "lo", type: "quantitative" }, x2: { field: "hi" } } },
+      { data: { values: [{ lo: -avg, hi: avg }] }, mark: { type: "rect", color: dark ? "#3a4450" : "#d3dae0" }, encoding: { x: { field: "lo", type: "quantitative" }, x2: { field: "hi" } } },
+      { data: { values: [{ x: 0 }] }, mark: { type: "rule", color: dark ? "#8b95a2" : "#5a6472" }, encoding: { x: { field: "x", type: "quantitative" } } },
+      { data: { values: plotted },
+        layer: [
+          { mark: { type: "circle", size: 140, opacity: 1, stroke: dark ? "#141a22" : "#ffffff", strokeWidth: 1.5 },
+            encoding: {
+              x: { field: "dem_lead", type: "quantitative", title: "Poll lead: Democrat minus Republican (points)", scale: { domain: [-Math.max(20, p90 + 4), Math.max(20, p90 + 4)] } },
+              y: { field: "label", type: "nominal", sort: order, title: null, axis: { labelLimit: 260 } },
+              color: { field: "leader", type: "nominal", legend: { title: "Poll leader", orient: "top" },
+                scale: { domain: ["Democrat", "Republican", "Tie"], range: dark ? ["#3987e5", "#e66767", "#98a2ae"] : ["#2a78d6", "#e34948", "#7b8591"] } },
+              tooltip: [{ field: "race", title: "Race" }, { field: "candidate_1", title: "Candidate 1" }, { field: "pct_1", title: "%" },
+                { field: "candidate_2", title: "Candidate 2" }, { field: "pct_2", title: "%" }, { field: "pollster" }, { field: "poll_date", title: "Date" }],
+            } },
+          { transform: [{ filter: "datum.dem_lead >= 0" }],
+            mark: { type: "text", dx: 14, align: "left", fontSize: 11, color: dark ? "#c3c9d1" : "#3a4452" },
+            encoding: { x: { field: "dem_lead", type: "quantitative" }, y: { field: "label", type: "nominal", sort: order }, text: { field: "leadText" } } },
+          { transform: [{ filter: "datum.dem_lead < 0" }],
+            mark: { type: "text", dx: -14, align: "right", fontSize: 11, color: dark ? "#c3c9d1" : "#3a4452" },
+            encoding: { x: { field: "dem_lead", type: "quantitative" }, y: { field: "label", type: "nominal", sort: order }, text: { field: "leadText" } } },
+        ] },
+    ],
+  }), [plotted, order, avg, p90, dark]);
+
+  const genericSpec = useMemo<TopLevelSpec>(() => ({
+    $schema: "https://vega.github.io/schema/vega-lite/v6.json", width: "container", height: 160, data: { values: generic },
+    mark: { type: "line", point: { size: 60 } },
+    encoding: {
+      x: { field: "date", type: "temporal", title: null, axis: { format: "%d %b" } },
+      y: { field: "dem_lead", type: "quantitative", title: "Democratic lead (pts)", scale: { zero: true } },
+      color: { field: "measure", type: "nominal", legend: { title: null, orient: "top", labelLimit: 320 },
+        scale: { range: dark ? ["#3987e5", "#d95926"] : ["#2a78d6", "#eb6834"] } },
+      tooltip: [{ field: "measure" }, { field: "date", type: "temporal", format: "%d %b %Y" }, { field: "dem_pct", title: "Democrats %" },
+        { field: "rep_pct", title: "Republicans %" }, { field: "dem_lead", title: "Lead", format: "+.1f" }],
+    },
+  }), [generic, dark]);
+
+  return (
+    <View id="polls-2026" title="2026 Senate polls against the historical error" unit="Percentage points of the Democrat-minus-Republican margin in a single poll. Dark band: ± the average Senate poll miss; light band: ± the miss exceeded by one poll in ten (1998–2022).">
+      <Provenance by="Pollsters named in each row; entered by hand from cited reports" status="curated" latest={latestDate} note="latest poll date entered" />
+      <Controls>
+        <Segmented label="Polls shown" options={["Latest poll per race", "All polls"]} value={scope} onChange={setScope} />
+      </Controls>
+      {shown.length === 0 ? <Empty>No 2026 polls have been entered yet. Add rows to the curated workbook to see them here.</Empty> : (
+        <>
+          <Metrics>
+            <Metric label="Races with a 2026 poll entered" value={`${latestPerState(polls2026).length} of 35`} />
+            <Metric label={`Lead within an average miss (± ${fmt.dec(avg)})`} value={String(counts.avg)} />
+            <Metric label={`Within a 1-in-10 miss (± ${fmt.dec(p90)})`} value={String(counts.p90)} note="but larger than an average miss" />
+            <Metric label="Larger than a 1-in-10 miss" value={String(counts.out)} />
+          </Metrics>
+          <VegaChart spec={spec} label="2026 Senate poll leads plotted against historical polling error bands" />
+          {unplotted.length > 0 && (
+            <p className="muted small">Not plotted (parties not stated in the source, so the lead cannot be signed Democrat-minus-Republican): {unplotted.map((r) => `${str(r, "race")} (${str(r, "candidate_1")} ${num(r, "pct_1")}, ${str(r, "candidate_2")} ${num(r, "pct_2")})`).join("; ")}.</p>
+          )}
+          <h3>Every poll entered</h3>
+          <Table caption="2026 Senate polls with sources" maxHeight={340} rows={[...shown].sort((a, b) => Math.abs(num(a, "lead_1")) - Math.abs(num(b, "lead_1")))} columns={[
+            { key: "race", label: "Race" },
+            { key: "candidate_1", label: "Result", format: (_v, r) => `${r.candidate_1}${r.party_1 ? ` (${r.party_1})` : ""} ${r.pct_1} – ${r.candidate_2}${r.party_2 ? ` (${r.party_2})` : ""} ${r.pct_2}` },
+            { key: "lead_1", label: "Lead", align: "right", format: (v) => (v === 0 ? "Tie" : `${Math.abs(v as number)}`) },
+            { key: "pollster", label: "Pollster" }, { key: "poll_date", label: "Date" },
+            { key: "sample_note", label: "Note" },
+            { key: "source_url", label: "Source", format: (v) => <a href={String(v)} target="_blank" rel="noreferrer">Report</a> },
+          ]} />
+          {generic.length > 0 && (
+            <>
+              <h3>Generic congressional ballot</h3>
+              <p className="muted small">Which party voters say they will back for the House. A national mood gauge, not a seat count.</p>
+              <VegaChart spec={genericSpec} label="Generic congressional ballot, Democratic lead over time" height={200} />
+            </>
+          )}
+        </>
+      )}
+      <Sources>
+        <p><cite>2026 Senate polls and generic ballot (curated workbook)</cite>, compiled for this site with a source link on every row; error bands from {POLLS_SOURCE}</p>
+        <p>Each dot is one poll, not an average. Polls in the same cycle often miss in the same direction, so several races inside the band can move together. The workbook lives in the repository; anyone can see what was entered and when.</p>
+      </Sources>
+      <DownloadCsv rows={shown} columns={POLLS26_COLS} fileName="senate_polls_2026.csv" />
+    </View>
+  );
+}
+
 /* ----------------------------------------------------------------------------- 2020 -> 2024 swing */
 const SWING_COLS = ["state", "state_name", "dem_margin_2020", "dem_margin_2024", "senate_race_2026", "swing_2020_2024", "election_date"];
 
@@ -280,9 +405,14 @@ function WorldContext() {
 
 /* ----------------------------------------------------------------------------- 2026 seats */
 const BANDS: Record<string, number> = { "Median (50th percentile)": 0.5, "75th percentile": 0.75, "90th percentile": 0.9, "95th percentile": 0.95 };
-const BASELINES: Record<string, string> = { "Last Senate result": "last_dem_margin", "2024 presidential result": "pres_2024_dem_margin" };
+const BASELINES: Record<string, string> = { "Last Senate result": "last_dem_margin", "2024 presidential result": "pres_2024_dem_margin",
+  "Latest 2026 poll": "poll_2026_dem_lead" };
 
-function SeatsView({ polls, seats }: { polls: Row[]; seats: Row[] }) {
+function SeatsView({ polls, seats: baseSeats, polls2026 }: { polls: Row[]; seats: Row[]; polls2026: Row[] }) {
+  const seats = useMemo(() => {
+    const latest = new Map(latestPerState(polls2026).map((r) => [str(r, "state"), r]));
+    return baseSeats.map((s): Row => ({ ...s, poll_2026_dem_lead: latest.get(str(s, "state"))?.dem_lead ?? null }));
+  }, [baseSeats, polls2026]);
   const dark = useDarkMode();
   const [parties, setParties] = useState(["Democrat", "Republican"]);
   const [band, setBand] = useState("90th percentile");
@@ -291,8 +421,9 @@ function SeatsView({ polls, seats }: { polls: Row[]; seats: Row[] }) {
   const senateErrors = useMemo(() => polls.filter((r) => r.race_type === "Senate").map((r) => num(r, "absolute_error")), [polls]);
   const threshold = quantile(senateErrors, BANDS[band]);
   const filtered = useMemo(() => seats.filter((s) => parties.includes(str(s, "incumbent_party"))), [seats, parties]);
+  const usingPolls = baseline === "poll_2026_dem_lead";
 
-  const plot = filtered.map((s) => {
+  const plot = filtered.filter((s) => !usingPolls || s.poll_2026_dem_lead !== null).map((s) => {
     const value = s[baseline] === null ? num(s, "pres_2024_dem_margin") : num(s, baseline);
     return {
       ...s, incumbent_party: str(s, "incumbent_party"), baseline: value, inside: Math.abs(value) <= threshold,
@@ -329,13 +460,13 @@ function SeatsView({ polls, seats }: { polls: Row[]; seats: Row[] }) {
   const table = [...plot].sort((a, b) => Math.abs(a.baseline) - Math.abs(b.baseline));
 
   const marginLabels = ["R by 20+", "R by 10–20", "R by 5–10", "R by 0–5", "D by 0–5", "D by 5–10", "D by 10–20", "D by 20+"];
-  const mapRows = plot.map((p) => ({ marginClass: classify(p.baseline, [-20, -10, -5, 0, 5, 10, 20], marginLabels), id: STATE_FIPS[String((p as Record<string, unknown>).state)], baseline: p.baseline, inside: p.inside, label: p.label,
+  const mapRows = plot.map((p) => ({ marginClass: p.baseline === 0 ? "Tie" : classify(p.baseline, [-20, -10, -5, 0, 5, 10, 20], marginLabels), id: STATE_FIPS[String((p as Record<string, unknown>).state)], baseline: p.baseline, inside: p.inside, label: p.label,
     incumbent: String((p as Record<string, unknown>).incumbent), party: p.incumbent_party, exceeded: p.exceeded }));
   const mapSpec = useMemo(() => choropleth({
     url: "/geo/us-states-10m.json", feature: "states", projection: "albersUsa", rows: mapRows, height: 420, dark,
     fields: ["baseline", "label", "incumbent", "party", "exceeded", "inside", "marginClass"], strokeField: "inside",
     color: { field: "marginClass", type: "nominal", title: "Baseline margin, points",
-      scale: { domain: marginLabels, range: ["#9e1b1b", "#d43d3d", "#ec8a87", "#f6c9c6", "#c6dbf5", "#7fb0ec", "#2a78d6", "#154a8f"] },
+      scale: { domain: [...marginLabels, "Tie"], range: ["#9e1b1b", "#d43d3d", "#ec8a87", "#f6c9c6", "#c6dbf5", "#7fb0ec", "#2a78d6", "#154a8f", "#8a939d"] },
       legend: { orient: "bottom", direction: "horizontal", columns: 4, symbolType: "square" } },
     tooltip: [{ field: "label", title: "Seat" }, { field: "incumbent", title: "Incumbent" }, { field: "party", title: "Party" },
       { field: "baseline", title: "Margin (pts)", format: "+.1f" },
@@ -359,6 +490,7 @@ function SeatsView({ polls, seats }: { polls: Row[]; seats: Row[] }) {
             <Metric label="Held by Democrats" value={String(inside.filter((p) => p.incumbent_party === "Democrat").length)} />
             <Metric label="Held by Republicans" value={String(inside.filter((p) => p.incumbent_party === "Republican").length)} />
           </Metrics>
+          {usingPolls && <p className="muted small">Showing the {plot.length} seats with a signed 2026 poll entered; the other {filtered.length - plot.length} seats have no poll in the curated workbook (or no stated parties) and are left grey, not estimated.</p>}
           <h3>Where the 2026 Senate contests are</h3>
           <p className="muted small">Colour: the chosen baseline margin (blue = Democratic lead, red = Republican lead). Dark outline: inside the ± {fmt.dec(threshold)}-point band. Grey: no Senate contest in 2026.</p>
           <VegaChart spec={mapSpec} label="US map of 2026 Senate contests coloured by baseline margin" height={480} />
@@ -380,7 +512,7 @@ function SeatsView({ polls, seats }: { polls: Row[]; seats: Row[] }) {
         <p>{SEATS_SOURCE} Error band from {POLLS_SOURCE}</p>
         <p>A past margin is not a 2026 forecast: candidates, turnout and the national environment change, several seats have new appointees, and whether an incumbent is running is not recorded here. Arkansas 2020 had no Democratic nominee, so its baseline falls back to the 2024 presidential margin. Louisiana&apos;s last contest was an all-party primary.</p>
       </Sources>
-      <DownloadCsv rows={filtered} columns={SEAT_COLS} fileName="senate_2026_seats.csv" />
+      <DownloadCsv rows={filtered.map((s) => Object.fromEntries(SEAT_COLS.map((c) => [c, (s as Record<string, unknown>)[c] as string | number | null])))} columns={SEAT_COLS} fileName="senate_2026_seats.csv" />
     </View>
   );
 }

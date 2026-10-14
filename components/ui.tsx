@@ -4,7 +4,7 @@ import { csvFormat } from "d3-dsv";
 import type { ReactNode } from "react";
 import type { Row } from "@/lib/data";
 
-export type Status = "observed" | "estimated" | "claimed" | "verified" | "archived" | "derived";
+export type Status = "observed" | "estimated" | "claimed" | "verified" | "archived" | "derived" | "curated";
 
 const STATUS_TEXT: Record<Status, string> = {
   observed: "Observed values",
@@ -13,6 +13,7 @@ const STATUS_TEXT: Record<Status, string> = {
   verified: "Photo- or video-verified, lower bound",
   archived: "Archived; no longer updated",
   derived: "Derived in this pipeline",
+  curated: "Curated by hand; every row cites its source",
 };
 
 /** Who counted it, how certain it is, and when it was last observed. */
@@ -179,7 +180,7 @@ export function DownloadCsv({ rows, columns, fileName }: { rows: Row[]; columns:
 }
 
 export function Table({ columns, rows, caption, maxHeight = 320 }: {
-  columns: { key: string; label: string; align?: "right"; format?: (v: unknown) => string }[];
+  columns: { key: string; label: string; align?: "right"; format?: (v: unknown, row: Record<string, unknown>) => ReactNode }[];
   rows: Record<string, unknown>[]; caption: string; maxHeight?: number;
 }) {
   return (
@@ -194,7 +195,7 @@ export function Table({ columns, rows, caption, maxHeight = 320 }: {
             <tr key={i}>
               {columns.map((c) => (
                 <td key={c.key} className={c.align === "right" ? "num" : undefined}>
-                  {c.format ? c.format(row[c.key]) : row[c.key] === null || row[c.key] === undefined ? "–" : String(row[c.key])}
+                  {c.format ? c.format(row[c.key], row) : row[c.key] === null || row[c.key] === undefined ? "–" : String(row[c.key])}
                 </td>
               ))}
             </tr>

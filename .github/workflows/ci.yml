@@ -18,6 +18,8 @@ jobs:
           cache-dependency-path: pipeline/requirements.txt
       - run: pip install -r pipeline/requirements.txt
       - run: python pipeline/publish.py --check
+      - name: Validate the curated 2026 polls workbook
+        run: python pipeline/publish.py --curated --dry-run
 
   web:
     name: Lint and build the site

@@ -42,6 +42,15 @@ sources:
   notes: File legislators-current.yaml; Senate terms ending 2027-01-03 (Class II) or 2026-11-03 (special
     elections in Ohio and Florida). The 2026 Oklahoma and South Carolina appointments were checked against
     contemporary news reports.
+- id: curated_2026_polls
+  publisher: DV3 Dashboards (curated)
+  title: 2026 Senate polls and generic ballot (curated workbook)
+  url: https://github.com/erkebai-b/DV3_Dashboards/blob/main/pipeline/usa_elections_2026/data/curated/2026_midterms.xlsx
+  licence: Compiled facts with a citation for every row; underlying polls belong to their pollsters
+  retrieved: '2026-10-15'
+  cadence: Updated by hand when new polls are published
+  status: snapshot
+  notes: Each row cites the report it was taken from (initially the Forbes daily race tracker of 13 Oct 2026).
 datasets:
 - id: polls
   source_ids:
@@ -303,6 +312,142 @@ datasets:
       nullable: false
       date_minimum: '2024-11-05'
       date_maximum: '2024-11-05'
+- id: polls_2026
+  source_ids:
+  - curated_2026_polls
+  sample: data/sample_polls_2026.csv
+  processed_output: data/processed_polls_2026.csv
+  format: csv
+  primary_key:
+  - state
+  - pollster
+  - poll_date
+  minimum_rows: 1
+  columns:
+    state:
+      type: string
+      role: geography
+      nullable: false
+    race:
+      type: string
+      role: dimension
+      nullable: false
+    seat_status:
+      type: string
+      role: dimension
+      nullable: true
+    candidate_1:
+      type: string
+      role: dimension
+      nullable: false
+    party_1:
+      type: string
+      role: dimension
+      nullable: true
+      allowed_values: [D, R, I]
+    pct_1:
+      type: number
+      role: measure
+      nullable: false
+      unit: percent
+      minimum: 0
+      maximum: 100
+    candidate_2:
+      type: string
+      role: dimension
+      nullable: false
+    party_2:
+      type: string
+      role: dimension
+      nullable: true
+      allowed_values: [D, R, I]
+    pct_2:
+      type: number
+      role: measure
+      nullable: false
+      unit: percent
+      minimum: 0
+      maximum: 100
+    pollster:
+      type: string
+      role: dimension
+      nullable: false
+    poll_date:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '2025-01-01'
+    sample_note:
+      type: string
+      role: dimension
+      nullable: true
+    source_url:
+      type: string
+      role: identifier
+      nullable: false
+    lead_1:
+      type: number
+      role: measure
+      nullable: false
+      unit: percentage points
+      minimum: -100
+      maximum: 100
+    dem_lead:
+      type: number
+      role: measure
+      nullable: true
+      unit: percentage points (Democrat minus Republican)
+      minimum: -100
+      maximum: 100
+- id: generic_2026
+  source_ids:
+  - curated_2026_polls
+  sample: data/sample_generic_2026.csv
+  processed_output: data/processed_generic_2026.csv
+  format: csv
+  primary_key:
+  - measure
+  - date
+  minimum_rows: 1
+  columns:
+    measure:
+      type: string
+      role: dimension
+      nullable: false
+    date:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '2025-01-01'
+    dem_pct:
+      type: number
+      role: measure
+      nullable: false
+      unit: percent
+      minimum: 0
+      maximum: 100
+    rep_pct:
+      type: number
+      role: measure
+      nullable: false
+      unit: percent
+      minimum: 0
+      maximum: 100
+    source:
+      type: string
+      role: dimension
+      nullable: true
+    source_url:
+      type: string
+      role: identifier
+      nullable: false
+    dem_lead:
+      type: number
+      role: measure
+      nullable: false
+      unit: percentage points
+      minimum: -100
+      maximum: 100
 views:
 - id: polling_error_history
   dataset_id: polls

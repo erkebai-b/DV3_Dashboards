@@ -42,6 +42,16 @@
         "file": "/data/elections/swing.csv",
         "rows": 51,
         "latest_observation": "2024-11-05"
+      },
+      "polls_2026": {
+        "file": "/data/elections/polls_2026.csv",
+        "rows": 11,
+        "latest_observation": null
+      },
+      "generic_2026": {
+        "file": "/data/elections/generic_2026.csv",
+        "rows": 3,
+        "latest_observation": null
       }
     },
     "drones": {

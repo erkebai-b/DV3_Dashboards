@@ -1,0 +1,42 @@
+name: Publish curated data
+
+# Runs when the hand-maintained 2026 polls workbook changes: validates every row and, if all pass,
+# publishes the CSVs the site reads. A bad row fails the run and the site keeps its previous data.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "pipeline/usa_elections_2026/data/curated/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+      - run: pip install -r pipeline/requirements.txt
+      - name: Validate and publish the curated workbook
+        run: python pipeline/publish.py --curated
+      - name: Commit published data if it changed
+        run: |
+          if git diff --quiet -- public/data pipeline; then
+            echo "Published data already match the workbook."
+            exit 0
+          fi
+          git config user.name "dv3-data-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data pipeline/usa_elections_2026/data
+          git commit -m "data: publish curated 2026 polls $(date -u +%Y-%m-%d)"
+          git push

@@ -24,6 +24,21 @@ GitHub Actions (daily)            GitHub repo                       Vercel
 - **CI** (`.github/workflows/ci.yml`) rebuilds every dataset offline from the bundled samples and validates it against the full contract, then lints and builds the site.
 - **Front end**: Next.js 15 (App Router, statically prerendered), Vega-Lite charts and maps (TopoJSON boundaries), no backend. Filtering, headline findings and CSV downloads run in the browser from the published CSV files.
 
+## Updating the 2026 polls (curated workbook)
+
+2026 Senate polls and generic-ballot readings come from a hand-maintained spreadsheet:
+`pipeline/usa_elections_2026/data/curated/2026_midterms.xlsx`.
+
+1. Open it in Excel, add a row under the last poll on the **Senate polls** sheet (State, State code, candidates,
+   parties D/R/blank, percentages, pollster, date as YYYY-MM-DD, **Source URL**). Generic-ballot readings go on
+   the **National** sheet.
+2. Commit and push the file.
+3. The **Publish curated data** workflow validates every row (dates, parties, shares, a 2026 Senate state code,
+   an http(s) source on every row, no future dates) and, if all pass, commits the CSVs the site reads. Vercel then
+   redeploys. A bad row fails the run, names the row, and leaves the site unchanged.
+
+Validate locally first with `python pipeline/publish.py --curated --dry-run`.
+
 ## Run locally
 
 ```bash

@@ -23,6 +23,7 @@ export default function Method() {
         <dt><span className="status status-archived">Archived</span></dt><dd>A source that is no longer updated; coverage ends where the archive ends.</dd>
         <dt><span className="status status-claimed">Unverified claim</span></dt><dd>A statement by a party to a conflict. Shown as a claim, never merged with verified counts.</dd>
         <dt><span className="status status-verified">Verified, lower bound</span></dt><dd>Each item has photo or video evidence; the true total is higher.</dd>
+        <dt><span className="status status-curated">Curated by hand</span></dt><dd>Entered from cited reports into a spreadsheet kept in the repository (2026 polls). Every row carries its source link and passes the same validation before it is published.</dd>
       </dl>
 
       <h2 id="evidence">Evidence ratings</h2>

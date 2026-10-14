@@ -10,6 +10,11 @@ Modes
     Offline. Rebuilds every dataset from the bundled samples and validates it against the full
     contract, including the pinned latest-observation dates. Used by CI on every push.
 
+``python pipeline/publish.py --curated [--dry-run]``
+    No network. Reads the hand-maintained workbook(s) (for example the 2026 polls spreadsheet),
+    validates every row, and publishes the result plus the matching samples. ``--dry-run``
+    validates only; CI runs it on every push.
+
 ``python pipeline/publish.py --live``
     Downloads the raw sources, transforms and validates them, then writes ``public/data/``.
     The contract is enforced in full except two fields that legitimately move when sources
@@ -39,7 +44,8 @@ PUBLIC = HERE.parent / "public" / "data"
 DASHBOARDS = {
     "oil_market": ("oil", {"prices": "prices.csv", "regions": "regions.csv", "countries": "countries.csv",
                            "country_map": "country_map.csv", "prices_daily": "prices_daily.csv"}),
-    "usa_elections_2026": ("elections", {"polls": "polls.csv", "seats": "seats.csv", "swing": "swing.csv"}),
+    "usa_elections_2026": ("elections", {"polls": "polls.csv", "seats": "seats.csv", "swing": "swing.csv",
+                                         "polls_2026": "polls_2026.csv", "generic_2026": "generic_2026.csv"}),
     "drone_industry": ("drones", {"comparison": "comparison.csv", "claims": "claims.csv",
                                   "platforms": "platforms.csv"}),
 }
@@ -92,12 +98,43 @@ def run(folder: str, live: bool) -> dict:
     return summary
 
 
+def curated(write: bool) -> None:
+    """Read hand-maintained workbooks (no network), validate, and publish them plus their samples."""
+    for folder, (slug, files) in DASHBOARDS.items():
+        module = load_pipeline(folder)
+        if not hasattr(module, "CURATED"):
+            continue
+        contract = module.load_contract()
+        frames = {name: module.DERIVE[name](transform()) for name, transform in module.CURATED.items()}
+        for name, frame in frames.items():
+            module.validate(frame, relax(contract)[name])
+        seats = module.read_dataset(PUBLIC / slug / files["seats"], contract["seats"]) if "seats" in files else None
+        module.check_curated({**frames, **({"seats": seats} if seats is not None else {})})
+        for name, frame in frames.items():
+            print(f"[ok] {folder}/{name}: {len(frame)} validated rows")
+            if write:
+                frame.to_csv(PUBLIC / slug / files[name], index=False)
+                frame.to_csv(HERE / folder / module.DATASET_FILES[name][0], index=False)
+        if write:
+            meta_path = PUBLIC / "meta.json"
+            meta = json.loads(meta_path.read_text())
+            for name, frame in frames.items():
+                meta["dashboards"].setdefault(slug, {})[name] = {"file": f"/data/{slug}/{files[name]}", "rows": int(len(frame)),
+                                                                "latest_observation": None}
+            meta_path.write_text(json.dumps(meta, indent=2) + "\n")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--check", action="store_true", help="Offline rebuild and full validation from samples")
     mode.add_argument("--live", action="store_true", help="Refresh from live sources and publish to public/data")
+    mode.add_argument("--curated", action="store_true", help="Validate and publish hand-maintained workbooks only")
+    parser.add_argument("--dry-run", action="store_true", help="With --curated: validate without writing files")
     args = parser.parse_args()
+    if args.curated:
+        curated(write=not args.dry_run)
+        return
 
     results, failures = {}, []
     for folder in DASHBOARDS:
