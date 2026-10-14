@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: "Three evidence dashboards on the oil market, 2026 US Senate polling error, and drone losses in the Russia–Ukraine war, with every number traced to who measured it.",
 };
 
-const REPO = "https://github.com/OWNER/DV3_Dashboards";
+const REPO = "https://github.com/erkebai-b/DV3_Dashboards";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const meta = readMeta();
