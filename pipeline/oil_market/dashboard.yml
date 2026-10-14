@@ -304,6 +304,47 @@ datasets:
       unit: percent of primary energy
       minimum: 0
       maximum: 100
+- id: prices_daily
+  source_ids:
+  - eia_spot_prices
+  - datahub_oil_prices
+  sample: data/sample_prices_daily.csv
+  processed_output: data/processed_prices_daily.csv
+  format: csv
+  date_column: date
+  primary_key:
+  - date
+  - benchmark
+  minimum_rows: 500
+  latest_observation: '2026-10-06'
+  columns:
+    date:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '2024-01-01'
+      date_maximum: '2026-10-06'
+    benchmark:
+      type: string
+      role: dimension
+      nullable: false
+      allowed_values:
+      - Brent
+      - WTI
+    price_usd_per_bbl:
+      type: number
+      role: measure
+      nullable: false
+      unit: US dollars per barrel
+      minimum: -50
+      maximum: 300
+    change_1d_pct:
+      type: number
+      role: measure
+      nullable: true
+      unit: percent
+      minimum: -100
+      maximum: 500
 views:
 - id: demand_shift
   dataset_id: countries

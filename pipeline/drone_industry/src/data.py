@@ -33,6 +33,7 @@ import calendar
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
@@ -57,6 +58,7 @@ CLAIM_CATEGORIES = {
     "tank": "Tanks",
     "field artillery": "Artillery systems",
     "APC": "Armoured combat vehicles",
+    "ground robotic systems": "Ground robotic systems",   # reported from 3 May 2026
 }
 UAV_CATEGORIES = [
     "Unmanned Aerial Vehicles",                    # single category used until November 2022
@@ -80,9 +82,18 @@ DATASET_FILES = {
 
 
 # --------------------------------------------------------------------------- acquire
-def _fetch(url: str) -> bytes:
-    with urlopen(url, timeout=60) as response:
-        return response.read()
+def _fetch(url: str, attempts: int = 5) -> bytes:
+    """GET with a timeout, retrying rate limits (429) and server errors with exponential backoff."""
+    for attempt in range(attempts):
+        try:
+            with urlopen(url, timeout=60) as response:
+                return response.read()
+        except HTTPError as error:
+            if error.code not in (429, 500, 502, 503, 504) or attempt == attempts - 1:
+                raise
+            wait = int(error.headers.get("Retry-After") or 0) or 2 ** (attempt + 1)
+            time.sleep(min(wait, 60))
+    raise RuntimeError("unreachable")
 
 
 def _month_ends(start: str, end: str) -> list[pd.Timestamp]:
@@ -137,6 +148,8 @@ def transform_claims() -> pd.DataFrame:
         if (month_end - record["date"]).days > 1:      # incomplete (current) month
             continue
         for column, label in CLAIM_CATEGORIES.items():
+            if pd.isna(record.get(column)):
+                continue   # category not yet reported this month
             rows.append({
                 "month_end": month_end.strftime("%Y-%m-%d"),
                 "last_report_date": record["date"].strftime("%Y-%m-%d"),
@@ -206,7 +219,13 @@ def derive_claims(frame: pd.DataFrame) -> pd.DataFrame:
     frame = frame[["month_end", "last_report_date", "category", "claimed_cumulative", "reports_in_month"]].copy()
     frame = frame.sort_values(["category", "month_end"]).reset_index(drop=True)
     frame["claimed_in_month"] = frame.groupby("category")["claimed_cumulative"].diff()
-    frame["claimed_in_month"] = frame["claimed_in_month"].fillna(frame["claimed_cumulative"]).astype(int)
+    # A category's first month: only the war's first month starts from zero. A category added later
+    # (ground robotic systems, May 2026) arrives with an unexplained running total, so its first month
+    # is left missing rather than attributing the whole backlog to that month.
+    first = frame.groupby("category")["month_end"].transform("min")
+    from_start = first == frame["month_end"].min()
+    frame.loc[(frame["month_end"] == first) & from_start, "claimed_in_month"] = frame["claimed_cumulative"]
+    frame["claimed_in_month"] = frame["claimed_in_month"].astype("Int64")
     return frame
 
 

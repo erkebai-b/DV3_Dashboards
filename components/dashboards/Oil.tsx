@@ -9,7 +9,7 @@ import { useDarkMode, VegaChart } from "@/components/VegaChart";
 import { blues, choropleth, classify } from "@/lib/maps";
 import { useIsoNumeric } from "@/lib/useIso";
 import {
-  ChipSelect, Controls, DownloadCsv, Empty, Findings, Loading, Metric, Metrics, Provenance, RangeSelect, Segmented,
+  ChipSelect, Controls, DownloadCsv, Empty, type Finding, Findings, Loading, Metric, Metrics, Provenance, RangeSelect, Segmented,
   Sources, Table, View,
 } from "@/components/ui";
 
@@ -33,12 +33,14 @@ export default function OilDashboard() {
     countries: { path: "/data/oil/countries.csv", numeric: COUNTRY_COLS.slice(1).filter((c) => c !== "country") },
     countryMap: { path: "/data/oil/country_map.csv", numeric: ["year", "oil_production_twh", "oil_consumption_twh",
       "net_balance_twh", "oil_per_capita_kwh", "oil_share_energy_pct"] },
+    daily: { path: "/data/oil/prices_daily.csv", numeric: ["price_usd_per_bbl", "change_1d_pct"] },
   });
   if (state.status !== "ready") return <Loading state={state} />;
-  const { prices, regions, countries, countryMap } = state.data;
+  const { prices, regions, countries, countryMap, daily } = state.data;
   return (
     <>
-      <Findings items={findings(prices, regions, countries)} />
+      <Findings items={findings(prices, regions, countries, daily)} gaps={GAPS} />
+      <RecentView daily={daily} />
       <DemandView countries={countries} />
       <BalanceView regions={regions} />
       <CountryMapView rows={countryMap} />
@@ -47,25 +49,39 @@ export default function OilDashboard() {
   );
 }
 
-function findings(prices: Row[], regions: Row[], countries: Row[]): string[] {
+const GAPS = [
+  "Annual production and consumption stop at 2024. The Energy Institute's 2026 edition (covering 2025) appears on Our World in Data's website but not yet in the GitHub data file this site reads; the daily refresh will add 2025 automatically when it does.",
+  "There is no monthly supply, demand or inventory series here yet (EIA STEO, IEA, JODI), so 2025–2026 price moves cannot be matched to physical balances. Adding them needs an EIA API key or another openly scriptable source.",
+  "Prices are nominal spot prices; nothing on this page identifies the causes of price moves.",
+];
+
+function findings(prices: Row[], regions: Row[], countries: Row[], daily: Row[]): Finding[] {
   const world = countries.filter((r) => r.country === "World");
   const latestYear = Math.max(...world.map((r) => num(r, "year")));
   const w = (y: number) => world.find((r) => r.year === y)!;
-  const items = [
-    `World oil consumption in ${latestYear} was ${fmt.signed(num(w(latestYear), "consumption_index_2019") - 100)}% against 2019, while oil's share of primary energy moved from ${fmt.dec(num(w(2019), "oil_share_energy_pct"))}% to ${fmt.dec(num(w(latestYear), "oil_share_energy_pct"))}%. Demand is still growing in absolute terms even as its share edges down.`,
-  ];
   const change = Array.from(new Set(countries.map((r) => str(r, "country")))).filter((c) => c !== "World").map((c) => {
     const rows = countries.filter((r) => r.country === c);
     const at = (y: number) => num(rows.find((r) => r.year === y)!, "oil_consumption_twh");
     return { c, d: at(latestYear) - at(2019) };
   }).sort((a, b) => a.d - b.d);
-  items.push(`Among the countries shown, the largest increase in consumption since 2019 was ${change.at(-1)!.c} (${fmt.signed(change.at(-1)!.d, 0)} TWh) and the largest fall was ${change[0].c} (${fmt.signed(change[0].d, 0)} TWh).`);
   const lastYear = Math.max(...regions.map((r) => num(r, "year")));
   const reg = (name: string, year: number) => num(regions.find((r) => r.region === name && r.year === year)!, "net_balance_twh");
-  items.push(`Asia Pacific's net oil deficit reached ${fmt.int(Math.abs(reg("Asia Pacific", lastYear)))} TWh in ${lastYear}, up from ${fmt.int(Math.abs(reg("Asia Pacific", 2000)))} TWh in 2000. The Middle East remains the largest surplus region at ${fmt.int(reg("Middle East", lastYear))} TWh.`);
-  const brent = prices.filter((r) => r.benchmark === "Brent").sort((a, b) => str(a, "date").localeCompare(str(b, "date"))).at(-1)!;
-  items.push(`Brent averaged ${fmt.usd(num(brent, "price_usd_per_bbl"))} a barrel in ${fmt.monthLong(str(brent, "date"))}, ${fmt.signed(num(brent, "change_12m_pct"), 0)}% on a year earlier. The price data alone do not identify the cause of recent moves.`);
-  return items;
+  const brentDaily = daily.filter((r) => r.benchmark === "Brent").sort((a, b) => str(a, "date").localeCompare(str(b, "date")));
+  const first = brentDaily[0];
+  const last = brentDaily.at(-1)!;
+  const low = brentDaily.reduce((m, r) => (num(r, "price_usd_per_bbl") < num(m, "price_usd_per_bbl") ? r : m));
+  const high = brentDaily.reduce((m, r) => (num(r, "price_usd_per_bbl") > num(m, "price_usd_per_bbl") ? r : m));
+  const day = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  return [
+    { text: `Brent went from ${fmt.usd(num(first, "price_usd_per_bbl"))} on ${day(str(first, "date"))} to ${fmt.usd(num(last, "price_usd_per_bbl"))} on ${day(str(last, "date"))}. Its low in this period was ${fmt.usd(num(low, "price_usd_per_bbl"))} (${day(str(low, "date"))}) and its high ${fmt.usd(num(high, "price_usd_per_bbl"))} (${day(str(high, "date"))}).`,
+      stars: 5, basis: "Measured EIA daily spot prices. They show what happened, not why." },
+    { text: `World oil consumption in ${latestYear} was ${fmt.signed(num(w(latestYear), "consumption_index_2019") - 100)}% against 2019, while oil's share of primary energy moved from ${fmt.dec(num(w(2019), "oil_share_energy_pct"))}% to ${fmt.dec(num(w(latestYear), "oil_share_energy_pct"))}%. Demand is still growing in absolute terms even as its share edges down.`,
+      stars: 4, basis: "Energy Institute estimates, revised each edition; cannot attribute the change to electrification." },
+    { text: `Among the countries shown, the largest increase in consumption since 2019 was ${change.at(-1)!.c} (${fmt.signed(change.at(-1)!.d, 0)} TWh) and the largest fall was ${change[0].c} (${fmt.signed(change[0].d, 0)} TWh).`,
+      stars: 4, basis: "Same Energy Institute series; country totals are well measured but revised." },
+    { text: `Asia Pacific's net oil deficit reached ${fmt.int(Math.abs(reg("Asia Pacific", lastYear)))} TWh in ${lastYear}, up from ${fmt.int(Math.abs(reg("Asia Pacific", 2000)))} TWh in 2000. The Middle East remains the largest surplus region at ${fmt.int(reg("Middle East", lastYear))} TWh.`,
+      stars: 4, basis: "Strong for direction; net balance is production minus consumption, not measured trade." },
+  ];
 }
 
 /* ----------------------------------------------------------------------------- demand */
@@ -347,6 +363,109 @@ function PriceView({ prices }: { prices: Row[] }) {
         <p>Nominal prices, not adjusted for inflation. Monthly averages smooth intra-month extremes: WTI&apos;s daily spot price of −US$36.98 on 20 April 2020 sits inside an April 2020 monthly average of US$16.55.</p>
       </Sources>
       <DownloadCsv rows={filtered} columns={PRICE_COLS} fileName="oil_spot_prices.csv" />
+    </View>
+  );
+}
+
+/* ----------------------------------------------------------------------------- 2024–2026 daily */
+const DAILY_COLS = ["date", "benchmark", "price_usd_per_bbl", "change_1d_pct"];
+
+function stdev(values: number[]) {
+  const m = values.reduce((a, b) => a + b, 0) / values.length;
+  return Math.sqrt(values.reduce((a, b) => a + (b - m) ** 2, 0) / (values.length - 1));
+}
+
+function RecentView({ daily }: { daily: Row[] }) {
+  const dark = useDarkMode();
+  const months = useMemo(() => Array.from(new Set(daily.map((r) => str(r, "date").slice(0, 7)))).sort(), [daily]);
+  const [chosen, setChosen] = useState(BENCHMARKS);
+  const [period, setPeriod] = useState<[string, string]>([months[0], months.at(-1)!]);
+  const filtered = useMemo(() => daily.filter((r) => chosen.includes(str(r, "benchmark"))
+    && str(r, "date").slice(0, 7) >= period[0] && str(r, "date").slice(0, 7) <= period[1]), [daily, chosen, period]);
+  const latestDate = daily.map((r) => str(r, "date")).sort().at(-1)!;
+
+  const stats = chosen.map((b) => {
+    const rows = filtered.filter((r) => r.benchmark === b).sort((x, y) => str(x, "date").localeCompare(str(y, "date")));
+    if (rows.length < 2) return null;
+    const first = rows[0];
+    const last = rows.at(-1)!;
+    let peak = num(rows[0], "price_usd_per_bbl");
+    let drawdown = 0;
+    for (const r of rows) {
+      peak = Math.max(peak, num(r, "price_usd_per_bbl"));
+      drawdown = Math.min(drawdown, num(r, "price_usd_per_bbl") / peak - 1);
+    }
+    const recent = rows.slice(-21).map((r) => r.change_1d_pct).filter((v): v is number => typeof v === "number");
+    const vol = recent.length > 2 ? stdev(recent) * Math.sqrt(252) : NaN;
+    return { b, first, last, change: (num(last, "price_usd_per_bbl") / num(first, "price_usd_per_bbl") - 1) * 100, drawdown: drawdown * 100, vol, rows };
+  }).filter(Boolean) as { b: string; first: Row; last: Row; change: number; drawdown: number; vol: number; rows: Row[] }[];
+
+  const moves = useMemo(() => [...filtered].filter((r) => r.change_1d_pct !== null)
+    .sort((a, b) => Math.abs(num(b, "change_1d_pct")) - Math.abs(num(a, "change_1d_pct"))).slice(0, 8), [filtered]);
+
+  const spec = useMemo<TopLevelSpec>(() => ({
+    $schema: "https://vega.github.io/schema/vega-lite/v6.json", width: "container", height: 320, data: { values: filtered },
+    encoding: { x: { field: "date", type: "temporal", title: null, axis: { format: "%b %Y" } } },
+    layer: [
+      { mark: { type: "line", strokeWidth: 1.6 },
+        encoding: { y: { field: "price_usd_per_bbl", type: "quantitative", title: "US dollars per barrel", scale: { zero: false } },
+          color: { field: "benchmark", type: "nominal", scale: scaleFor(BENCHMARKS, dark), legend: { title: null, orient: "top" } } } },
+      { params: [{ name: "hover", select: { type: "point", fields: ["date"], nearest: true, on: "pointerover", clear: "pointerout" } }],
+        mark: { type: "point", size: 50, filled: true },
+        encoding: { y: { field: "price_usd_per_bbl", type: "quantitative" },
+          color: { field: "benchmark", type: "nominal", scale: scaleFor(BENCHMARKS, dark), legend: null },
+          opacity: { condition: { param: "hover", empty: false, value: 1 }, value: 0 },
+          tooltip: [{ field: "date", type: "temporal", title: "Date", format: "%d %b %Y" }, { field: "benchmark" },
+            { field: "price_usd_per_bbl", title: "US$/bbl", format: ",.2f" }, { field: "change_1d_pct", title: "Day change %", format: "+.2f" }] } },
+    ],
+  }), [filtered, dark]);
+
+  const changeSpec = useMemo<TopLevelSpec>(() => ({
+    $schema: "https://vega.github.io/schema/vega-lite/v6.json", width: "container", height: 140,
+    data: { values: filtered.filter((r) => r.benchmark === (chosen.includes("Brent") ? "Brent" : "WTI") && r.change_1d_pct !== null) },
+    mark: { type: "bar", width: 1.2 },
+    encoding: {
+      x: { field: "date", type: "temporal", title: null, axis: { format: "%b %Y" } },
+      y: { field: "change_1d_pct", type: "quantitative", title: "Day change %" },
+      color: { condition: { test: "datum.change_1d_pct >= 0", value: SURPLUS }, value: DEFICIT },
+      tooltip: [{ field: "date", type: "temporal", format: "%d %b %Y", title: "Date" }, { field: "change_1d_pct", title: "Day change %", format: "+.2f" }],
+    },
+  }), [filtered, chosen]);
+
+  return (
+    <View id="recent" title="2024–2026 up close: daily Brent and WTI" unit="US dollars per barrel, nominal daily spot price; daily change in percent; volatility annualised from the last 21 trading days.">
+      <Provenance by="U.S. Energy Information Administration" status="observed" latest={latestDate} note="each benchmark on its own trading days" />
+      <Controls>
+        <ChipSelect label="Benchmarks" options={BENCHMARKS} value={chosen} onChange={setChosen} />
+        <RangeSelect label="Period" options={months} value={period} onChange={setPeriod} format={(m) => fmt.month(`${m}-01`)} />
+      </Controls>
+      {filtered.length === 0 ? <Empty>No benchmark selected. Choose Brent, WTI or both.</Empty> : (
+        <>
+          <Metrics>
+            {stats.flatMap((st) => [
+              <Metric key={`${st.b}-c`} label={`${st.b}: change over period`} value={`${fmt.signed(st.change)}%`}
+                note={`${fmt.usd(num(st.first, "price_usd_per_bbl"))} → ${fmt.usd(num(st.last, "price_usd_per_bbl"))}`} />,
+              <Metric key={`${st.b}-d`} label={`${st.b}: deepest fall from a peak`} value={`${fmt.dec(st.drawdown)}%`} />,
+              <Metric key={`${st.b}-v`} label={`${st.b}: recent volatility`} value={`${fmt.dec(st.vol, 0)}%`} note="annualised, last 21 trading days" />,
+            ])}
+          </Metrics>
+          <VegaChart spec={spec} label="Daily Brent and WTI spot prices since January 2024" height={360} />
+          <h3>Day-to-day moves ({chosen.includes("Brent") ? "Brent" : "WTI"})</h3>
+          <p className="muted small">Each bar is one trading day&apos;s percentage change. Clusters of tall bars mark turbulent stretches.</p>
+          <VegaChart spec={changeSpec} label="Daily percentage change in the oil price" height={170} />
+          <h3>Largest single-day moves in the selection</h3>
+          <Table caption="Largest single-day price moves" maxHeight={300} rows={moves} columns={[
+            { key: "date", label: "Date" }, { key: "benchmark", label: "Benchmark" },
+            { key: "price_usd_per_bbl", label: "Price (US$/bbl)", align: "right", format: (v) => fmt.dec(v as number, 2) },
+            { key: "change_1d_pct", label: "Day change", align: "right", format: (v) => `${fmt.signed(v as number, 2)}%` },
+          ]} />
+        </>
+      )}
+      <Sources>
+        <p>{EIA}</p>
+        <p>The data record when prices moved, not why. Matching these dates to events (supply decisions, conflicts, sanctions, shipping disruptions) needs separate, cited sources.</p>
+      </Sources>
+      <DownloadCsv rows={filtered} columns={DAILY_COLS} fileName="oil_daily_prices_2024_2026.csv" />
     </View>
   );
 }

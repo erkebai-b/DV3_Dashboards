@@ -9,11 +9,11 @@ import { useDarkMode, VegaChart } from "@/components/VegaChart";
 import { blues, choropleth, ORIGIN_ISO3 } from "@/lib/maps";
 import { useIsoNumeric } from "@/lib/useIso";
 import {
-  ChipSelect, Controls, DownloadCsv, Empty, Findings, Loading, Metric, Metrics, Provenance, RangeSelect, Segmented,
+  ChipSelect, Controls, DownloadCsv, Empty, type Finding, Findings, Loading, Metric, Metrics, Provenance, RangeSelect, Segmented,
   Sources, Table, View,
 } from "@/components/ui";
 
-const CATEGORIES = ["Drones (UAVs)", "Tanks", "Artillery systems", "Armoured combat vehicles"];
+const CATEGORIES = ["Drones (UAVs)", "Tanks", "Artillery systems", "Armoured combat vehicles", "Ground robotic systems"];
 const STATUSES = ["destroyed", "damaged", "abandoned", "captured"];
 const COMPARISON_COLS = ["month_end", "oryx_snapshot_date", "claimed_russian_drones", "verified_russian_uavs",
   "verified_ukrainian_uavs", "claims_per_verified_loss"];
@@ -36,7 +36,7 @@ export default function DronesDashboard() {
   const { comparison, claims, platforms } = state.data;
   return (
     <>
-      <Findings items={findings(comparison, claims, platforms)} />
+      <Findings items={findings(comparison, claims, platforms)} gaps={GAPS} />
       <ComparisonView comparison={comparison} />
       <ClaimsView claims={claims} />
       <PlatformView platforms={platforms} comparison={comparison} />
@@ -49,23 +49,41 @@ const yearEarlier = (iso: string) => {
   return new Date(Date.UTC(d.getUTCFullYear() - 1, d.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
 };
 
-function findings(comparison: Row[], claims: Row[], platforms: Row[]): string[] {
+const GAPS = [
+  "Oryx stopped listing reconnaissance UAVs after 3 May 2026, so the claimed-versus-verified comparison ends in April 2026 while claims continue.",
+  "The General Staff gives no platform breakdown, so the claimed total cannot be split into FPV, reconnaissance or long-range drones.",
+  "Launches and interceptions of one-way attack drones against Ukraine (published by Ukraine's Air Force and compiled in open datasets) are not yet in this pipeline.",
+];
+
+function findings(comparison: Row[], claims: Row[], platforms: Row[]): Finding[] {
   const drones = claims.filter((r) => r.category === "Drones (UAVs)");
   const latest = drones.map((r) => str(r, "month_end")).sort().at(-1)!;
-  const at = (cat: string, m: string) => num(claims.find((r) => r.category === cat && r.month_end === m)!, "claimed_in_month");
+  const at = (cat: string, m: string) => {
+    const row = claims.find((r) => r.category === cat && r.month_end === m);
+    return row && row.claimed_in_month !== null ? num(row, "claimed_in_month") : NaN;
+  };
   const now = at("Drones (UAVs)", latest);
   const prior = at("Drones (UAVs)", yearEarlier(latest));
+  const twoYears = at("Drones (UAVs)", yearEarlier(yearEarlier(latest)));
   const first = comparison[0];
   const last = comparison.at(-1)!;
   const russia = platforms.filter((r) => r.side === "Russia").sort((a, b) => num(b, "total") - num(a, "total"));
   const total = russia.reduce((s, r) => s + num(r, "total"), 0);
   const top3 = russia.slice(0, 3);
-  return [
-    `Ukraine's General Staff claimed ${fmt.int(now)} Russian drones destroyed in ${fmt.monthLong(latest)}, ${fmt.dec(now / prior)}× the figure for ${fmt.monthLong(yearEarlier(latest))} and ${fmt.int(now / Math.max(at("Tanks", latest), 1))}× its tank claim for the same month.`,
-    `Claims per photo-verified Russian UAV loss rose from ${fmt.dec(num(first, "claims_per_verified_loss"))} in ${fmt.monthLong(str(first, "month_end"))} to ${fmt.int(num(last, "claims_per_verified_loss"))} in ${fmt.monthLong(str(last, "month_end"))}: verified losses (${fmt.int(num(last, "verified_russian_uavs"))}) grew steadily while claims accelerated.`,
-    `In the photo-verified record, three Russian types (${top3.map((r) => str(r, "platform")).join(", ")}) account for ${Math.round((top3.reduce((s, r) => s + num(r, "total"), 0) / total) * 100)}% of listed Russian UAV losses, and ${Math.round((russia.reduce((s, r) => s + num(r, "captured"), 0) / total) * 100)}% of those airframes were captured rather than destroyed.`,
-    "Neither series is a complete count. Claims are unverified and one-sided; the verified record is a lower bound limited to identifiable airframes. Neither shows which drone types make up the claimed total.",
+  const grs = claims.filter((r) => r.category === "Ground robotic systems" && r.claimed_in_month !== null).map((r) => num(r, "claimed_in_month"));
+  const items: Finding[] = [
+    { text: `Ukraine's General Staff claimed ${fmt.int(now)} Russian drones destroyed in ${fmt.monthLong(latest)}: ${fmt.dec(now / prior)}× the figure a year earlier and ${fmt.dec(now / twoYears, 0)}× two years earlier (${fmt.int(twoYears)} in ${fmt.monthLong(yearEarlier(yearEarlier(latest)))}). It was ${fmt.int(now / Math.max(at("Tanks", latest), 1))}× the tank claim for the same month.`,
+      stars: 2, basis: "Unverified claim by one side. The direction (rapid growth in drone use) is plausible; the exact numbers cannot be checked." },
+    { text: `Claims per photo-verified Russian UAV loss rose from ${fmt.dec(num(first, "claims_per_verified_loss"))} in ${fmt.monthLong(str(first, "month_end"))} to ${fmt.int(num(last, "claims_per_verified_loss"))} in ${fmt.monthLong(str(last, "month_end"))}.`,
+      stars: 3, basis: "The gap itself is solid; what it means is not (★): the two series count different things, so it is not an exaggeration factor." },
+    { text: `In the photo-verified record, three Russian types (${top3.map((r) => str(r, "platform")).join(", ")}) account for ${Math.round((top3.reduce((s, r) => s + num(r, "total"), 0) / total) * 100)}% of listed Russian UAV losses, and ${Math.round((russia.reduce((s, r) => s + num(r, "captured"), 0) / total) * 100)}% of those airframes were captured rather than destroyed.`,
+      stars: 4, basis: "Each item has photo or video evidence; a lower bound that favours larger, photographable drones." },
   ];
+  if (grs.length) {
+    items.push({ text: `From May 2026 the General Staff began reporting ground robotic systems (uncrewed ground vehicles) as a separate category, claiming between ${fmt.int(Math.min(...grs))} and ${fmt.int(Math.max(...grs))} a month since.`,
+      stars: 2, basis: "Unverified claim; a new category arrives with an unexplained running total, so its first month is left blank." });
+  }
+  return items;
 }
 
 /* ----------------------------------------------------------------------------- claims vs verified */
@@ -172,8 +190,8 @@ function ClaimsView({ claims }: { claims: Row[] }) {
             {shown.map((c) => {
               const nowRow = filtered.find((r) => r.category === c && r.month_end === latest);
               const prevRow = filtered.find((r) => r.category === c && r.month_end === yearEarlier(latest));
-              const nowV = nowRow ? num(nowRow, "claimed_in_month") : NaN;
-              const prevV = prevRow ? num(prevRow, "claimed_in_month") : NaN;
+              const nowV = nowRow && nowRow.claimed_in_month !== null ? num(nowRow, "claimed_in_month") : NaN;
+              const prevV = prevRow && prevRow.claimed_in_month !== null ? num(prevRow, "claimed_in_month") : NaN;
               return <Metric key={c} label={`${c}, ${fmt.month(latest)}`} value={fmt.int(nowV)}
                 note={Number.isFinite(prevV) && prevV > 0 ? `${fmt.dec(nowV / prevV)}× a year earlier` : undefined} />;
             })}
@@ -189,7 +207,7 @@ function ClaimsView({ claims }: { claims: Row[] }) {
       )}
       <Sources>
         <p>{CLAIMS_SOURCE}</p>
-        <p>These are claims by one party to the war and cannot be independently verified. Monthly values are differences of published cumulative totals, so later corrections to the running total fall into the month they were made.</p>
+        <p>These are claims by one party to the war and cannot be independently verified. Monthly values are differences of published cumulative totals, so later corrections to the running total fall into the month they were made. Ground robotic systems have been reported only since 3 May 2026; their first month is blank because the category started with an existing running total.</p>
       </Sources>
       <DownloadCsv rows={filtered} columns={CLAIM_COLS} fileName="general_staff_claims.csv" />
     </View>

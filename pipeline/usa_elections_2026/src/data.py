@@ -66,6 +66,7 @@ ELECTION_DAY_2026 = "2026-11-03"
 DATASET_FILES = {
     "polls": ("data/sample.csv", "data/processed.csv"),
     "seats": ("data/sample_seats.csv", "data/processed_seats.csv"),
+    "swing": ("data/sample_swing.csv", "data/processed_swing.csv"),
 }
 
 
@@ -183,6 +184,25 @@ def transform_seats() -> pd.DataFrame:
     return seats.sort_values("state").reset_index(drop=True)
 
 
+def transform_swing(seats: pd.DataFrame) -> pd.DataFrame:
+    """Statewide presidential margins in 2020 and 2024 for the 50 states and DC."""
+    president = pd.read_csv(RAW / "election_results_presidential.csv", low_memory=False)
+    general = president.loc[(president["stage"] == "general") & president["cycle"].isin([2020, 2024])]
+    general = general.loc[general["state_abbrev"].str.fullmatch(r"[A-Z]{2}", na=False) & (general["state_abbrev"] != "PR")]
+    records = []
+    for state, rows in general.groupby("state_abbrev"):
+        margins = {}
+        for cycle in (2020, 2024):
+            margin, _ = _two_party_margin(rows.loc[rows["cycle"] == cycle])
+            margins[cycle] = margin
+        records.append({
+            "state": state, "state_name": rows["state"].iloc[0],
+            "dem_margin_2020": margins[2020], "dem_margin_2024": margins[2024],
+            "senate_race_2026": "yes" if state in set(seats["state"]) else "no",
+        })
+    return pd.DataFrame(records).sort_values("state").reset_index(drop=True)
+
+
 def _election_date(row: pd.Series) -> str:
     """Federal general election day of the seat's last cycle; Georgia 2020 runoff on 5 January 2021."""
     if row["last_election_stage"] == "runoff" and row["state"] == "GA" and row["last_election_cycle"] == 2020:
@@ -219,7 +239,15 @@ def derive_seats(frame: pd.DataFrame) -> pd.DataFrame:
     return frame.sort_values("state").reset_index(drop=True)
 
 
-DERIVE = {"polls": derive_polls, "seats": derive_seats}
+def derive_swing(frame: pd.DataFrame) -> pd.DataFrame:
+    """Swing = 2024 margin minus 2020 margin (negative = moved toward the Republican)."""
+    frame = frame[["state", "state_name", "dem_margin_2020", "dem_margin_2024", "senate_race_2026"]].copy()
+    frame["swing_2020_2024"] = (frame["dem_margin_2024"] - frame["dem_margin_2020"]).round(2)
+    frame["election_date"] = "2024-11-05"
+    return frame.sort_values("state").reset_index(drop=True)
+
+
+DERIVE = {"polls": derive_polls, "seats": derive_seats, "swing": derive_swing}
 
 
 # --------------------------------------------------------------------------- validate
@@ -289,6 +317,11 @@ def _cross_checks(frames: dict[str, pd.DataFrame]) -> None:
     seats = frames["seats"]
     if len(seats) != 35:
         raise ValueError(f"Expected 35 Senate contests on the 2026 ballot (33 Class II + 2 specials), found {len(seats)}")
+    swing = frames["swing"]
+    if len(swing) != 51:
+        raise ValueError(f"Expected 50 states plus DC in the swing table, found {len(swing)}")
+    if set(swing.loc[swing["senate_race_2026"] == "yes", "state"]) != set(seats["state"]):
+        raise ValueError("Swing table's 2026 Senate flag does not match the seats dataset")
     polls = frames["polls"]
     recomputed = (polls["dem_margin_poll"] - polls["dem_margin_actual"]).abs()
     if (recomputed - polls["absolute_error"]).abs().max() > 1e-3:
@@ -303,7 +336,8 @@ def build(sample_mode: bool) -> dict[str, pd.DataFrame]:
     else:
         if not RAW.exists() or not all((RAW / name).exists() for name in RAW_SOURCES):
             acquire()
-        base = {"polls": transform_polls(), "seats": transform_seats()}
+        seats = transform_seats()
+        base = {"polls": transform_polls(), "seats": seats, "swing": transform_swing(seats)}
     frames = {name: DERIVE[name](frame) for name, frame in base.items()}
     for name, frame in frames.items():
         validate(frame, contract[name])

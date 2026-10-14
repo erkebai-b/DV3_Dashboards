@@ -213,12 +213,31 @@ export function Loading({ state }: { state: { status: "loading" } | { status: "e
   );
 }
 
-export function Findings({ items }: { items: string[] }) {
+export type Finding = { text: string; stars: 1 | 2 | 3 | 4 | 5; basis: string };
+
+export function Stars({ n }: { n: number }) {
+  return (
+    <span className="stars" role="img" aria-label={`Evidence rating ${n} of 5`}>
+      {"★".repeat(n)}<span className="stars-off">{"★".repeat(5 - n)}</span>
+    </span>
+  );
+}
+
+export function Findings({ items, gaps }: { items: Finding[]; gaps: string[] }) {
   return (
     <section className="findings" aria-labelledby="findings-title">
       <h2 id="findings-title">What the data show</h2>
-      <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul>
-      <p className="muted small">Computed in your browser from the published data files, so these sentences update when the data do.</p>
+      <ul>
+        {items.map((item) => (
+          <li key={item.text}>
+            {item.text}
+            <span className="evidence"><Stars n={item.stars} /> {item.basis}</span>
+          </li>
+        ))}
+      </ul>
+      <h3 className="gaps-title">What these data cannot show yet</h3>
+      <ul className="gaps">{gaps.map((gap) => <li key={gap}>{gap}</li>)}</ul>
+      <p className="muted small">Computed in your browser from the published data files, so these sentences update when the data do. Evidence ratings: <a href="/method#evidence">how they are scored</a>.</p>
     </section>
   );
 }

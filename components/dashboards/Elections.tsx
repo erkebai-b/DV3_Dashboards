@@ -6,8 +6,9 @@ import { type Row, num, str, useDatasets } from "@/lib/data";
 import { fmt, groupBy, mean, median, quantile } from "@/lib/stats";
 import { useDarkMode, VegaChart } from "@/components/VegaChart";
 import { choropleth, classify, STATE_FIPS } from "@/lib/maps";
+import Link from "next/link";
 import {
-  ChipSelect, Controls, DownloadCsv, Empty, Findings, Loading, Metric, Metrics, Provenance, RangeSelect, Segmented,
+  ChipSelect, Controls, DownloadCsv, Empty, type Finding, Findings, Loading, Metric, Metrics, Provenance, RangeSelect, Segmented,
   SelectControl, Sources, Table, View,
 } from "@/components/ui";
 
@@ -30,19 +31,28 @@ export default function ElectionsDashboard() {
       "dem_margin_poll", "dem_margin_actual", "signed_error", "absolute_error"] },
     seats: { path: "/data/elections/seats.csv", numeric: ["last_election_cycle", "last_dem_margin", "pres_2024_dem_margin",
       "last_margin_size", "senate_minus_pres_margin"] },
+    swing: { path: "/data/elections/swing.csv", numeric: ["dem_margin_2020", "dem_margin_2024", "swing_2020_2024"] },
   });
   if (state.status !== "ready") return <Loading state={state} />;
-  const { polls, seats } = state.data;
+  const { polls, seats, swing } = state.data;
   return (
     <>
-      <Findings items={findings(polls, seats)} />
+      <Findings items={findings(polls, seats, swing)} gaps={GAPS} />
       <ErrorView polls={polls} />
+      <SwingView swing={swing} />
       <SeatsView polls={polls} seats={seats} />
+      <WorldContext />
     </>
   );
 }
 
-function findings(polls: Row[], seats: Row[]): string[] {
+const GAPS = [
+  "No 2024 or 2026 polls: FiveThirtyEight's open poll archive ends with the 2022 cycle (538 closed in 2025), so the most recent polling miss is not measured here.",
+  "No campaign finance, advertising or race ratings yet. FEC data need an API key, and rating outlets restrict reuse.",
+  "Results for 3 November 2026 do not exist yet; nothing here is a forecast.",
+];
+
+function findings(polls: Row[], seats: Row[], swing: Row[]): Finding[] {
   const senate = polls.filter((r) => r.race_type === "Senate");
   const errors = senate.map((r) => num(r, "absolute_error"));
   const late = senate.filter((r) => num(r, "days_to_election") <= 7).map((r) => num(r, "absolute_error"));
@@ -52,11 +62,20 @@ function findings(polls: Row[], seats: Row[]): string[] {
   const cycles = senate.map((r) => num(r, "cycle"));
   const inside = seats.filter((s) => s.last_dem_margin !== null && Math.abs(num(s, "last_dem_margin")) <= p90)
     .sort((a, b) => num(a, "last_margin_size") - num(b, "last_margin_size"));
+  const swings = swing.map((r) => num(r, "swing_2020_2024"));
+  const towardR = swing.filter((r) => num(r, "swing_2020_2024") < 0).length;
+  const biggest = [...swing].sort((a, b) => num(a, "swing_2020_2024") - num(b, "swing_2020_2024"))[0];
   return [
-    `Across ${fmt.int(senate.length)} Senate general-election polls from ${Math.min(...cycles)}–${Math.max(...cycles)}, the average absolute error on the margin was ${fmt.dec(mean(errors))} points; polls fielded in the final week were only modestly better (${fmt.dec(mean(late))} points).`,
-    `One Senate poll in ten missed the final margin by more than ${fmt.dec(p90)} points.`,
-    `Errors are correlated within a cycle: the largest average Senate miss was ${fmt.signed(worst.e)} points in ${worst.c} (${worst.e > 0 ? "overstating Democrats" : "overstating Republicans"}), and the direction has changed between cycles, so past bias is not a reliable correction for 2026.`,
-    `${inside.length} of the ${seats.length} Senate contests on the 2026 ballot were last decided by less than that ${fmt.dec(p90)}-point band: ${inside.map((s) => str(s, "state_name")).join(", ")}.`,
+    { text: `${towardR === swing.length ? "Every one" : `${towardR}`} of the ${swing.length} states and DC moved toward the Republican presidential candidate between 2020 and 2024 (median swing ${fmt.dec(Math.abs(median(swings)))} points; largest ${str(biggest, "state_name")}, ${fmt.dec(Math.abs(num(biggest, "swing_2020_2024")))} points).`,
+      stars: 5, basis: "Certified statewide results. A presidential swing is context for 2026, not a midterm forecast." },
+    { text: `Across ${fmt.int(senate.length)} Senate general-election polls from ${Math.min(...cycles)}–${Math.max(...cycles)}, the average absolute error on the margin was ${fmt.dec(mean(errors))} points; polls fielded in the final week were only modestly better (${fmt.dec(mean(late))} points).`,
+      stars: 4, basis: "Large sample matched to certified results; archive ends in 2022 and polls of the same race share errors." },
+    { text: `One Senate poll in ten missed the final margin by more than ${fmt.dec(p90)} points.`,
+      stars: 4, basis: "Same archive; the tail is what matters for close races." },
+    { text: `The largest average Senate miss was ${fmt.signed(worst.e)} points in ${worst.c} (${worst.e > 0 ? "overstating Democrats" : "overstating Republicans"}), and the direction has changed between cycles.`,
+      stars: 4, basis: "Accurate history, but only a weak (★★) guide to which way 2026 polls will lean." },
+    { text: `${inside.length} of the ${seats.length} Senate contests on the 2026 ballot were last decided by less than that ${fmt.dec(p90)}-point band: ${inside.map((s) => str(s, "state_name")).join(", ")}.`,
+      stars: 2, basis: "Past margins with different candidates: a baseline for attention, not a forecast of competitiveness." },
   ];
 }
 
@@ -177,6 +196,85 @@ function ErrorView({ polls }: { polls: Row[] }) {
       </Sources>
       <DownloadCsv rows={filtered} columns={POLL_COLS} fileName="polling_errors.csv" />
     </View>
+  );
+}
+
+/* ----------------------------------------------------------------------------- 2020 -> 2024 swing */
+const SWING_COLS = ["state", "state_name", "dem_margin_2020", "dem_margin_2024", "senate_race_2026", "swing_2020_2024", "election_date"];
+
+function SwingView({ swing }: { swing: Row[] }) {
+  const dark = useDarkMode();
+  const [scope, setScope] = useState("All states");
+  const filtered = useMemo(() => swing.filter((r) => scope === "All states" || r.senate_race_2026 === "yes"), [swing, scope]);
+  const swingLabels = ["R by 8+", "R by 6–8", "R by 4–6", "R by 2–4", "R by 0–2", "Toward D"];
+  const mapRows = filtered.map((r) => ({ id: STATE_FIPS[str(r, "state")], swingClass: classify(num(r, "swing_2020_2024"), [-8, -6, -4, -2, 0], swingLabels),
+    name: str(r, "state_name"), swing: num(r, "swing_2020_2024"), m20: num(r, "dem_margin_2020"), m24: num(r, "dem_margin_2024"),
+    senate: r.senate_race_2026 === "yes" })).filter((r) => r.id);
+  const mapSpec = useMemo(() => choropleth({
+    url: "/geo/us-states-10m.json", feature: "states", projection: "albersUsa", rows: mapRows, height: 400, dark,
+    fields: ["swingClass", "name", "swing", "m20", "m24", "senate"], strokeField: "senate",
+    color: { field: "swingClass", type: "nominal", title: "Swing in presidential margin, 2020 → 2024 (points)",
+      scale: { domain: swingLabels, range: ["#7a1414", "#b42626", "#d65050", "#ec8a87", "#f6c9c6", "#7fb0ec"] },
+      legend: { orient: "bottom", direction: "horizontal", columns: 6, symbolType: "square" } },
+    tooltip: [{ field: "name", title: "State" }, { field: "m20", title: "2020 margin (D − R)", format: "+.1f" },
+      { field: "m24", title: "2024 margin (D − R)", format: "+.1f" }, { field: "swing", title: "Swing (pts)", format: "+.1f" }],
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [JSON.stringify(mapRows), dark]);
+  const sorted = [...filtered].sort((a, b) => num(a, "swing_2020_2024") - num(b, "swing_2020_2024"));
+  const barSpec = useMemo<TopLevelSpec>(() => ({
+    $schema: "https://vega.github.io/schema/vega-lite/v6.json", width: "container", height: { step: 14 }, data: { values: sorted },
+    mark: { type: "bar", cornerRadiusEnd: 2, height: 10 },
+    encoding: {
+      y: { field: "state_name", type: "nominal", sort: sorted.map((r) => str(r, "state_name")), title: null, axis: { labelFontSize: 10, labelOverlap: false } },
+      x: { field: "swing_2020_2024", type: "quantitative", title: "Change in Democrat-minus-Republican margin (points)" },
+      color: { condition: { test: "datum.senate_race_2026 === 'yes'", value: dark ? "#e66767" : "#c43a3a" }, value: dark ? "#6b7480" : "#b5bcc4" },
+      tooltip: [{ field: "state_name", title: "State" }, { field: "swing_2020_2024", title: "Swing (pts)", format: "+.1f" },
+        { field: "senate_race_2026", title: "2026 Senate race" }],
+    },
+  }), [sorted, dark]);
+  const swings = filtered.map((r) => num(r, "swing_2020_2024"));
+  const senateSwings = swing.filter((r) => r.senate_race_2026 === "yes").map((r) => num(r, "swing_2020_2024"));
+
+  return (
+    <View id="swing" title="How the country moved between 2020 and 2024" unit="Percentage points. Swing = 2024 presidential margin minus 2020 margin (Democrat minus Republican); negative = moved toward the Republican.">
+      <Provenance by="State election offices, compiled by FiveThirtyEight" status="observed" latest="2024-11-05" note="certified presidential results" />
+      <Controls>
+        <Segmented label="States" options={["All states", "Only states with a 2026 Senate race"]} value={scope} onChange={setScope} />
+      </Controls>
+      <Metrics>
+        <Metric label="States that moved toward Republicans" value={`${filtered.filter((r) => num(r, "swing_2020_2024") < 0).length} of ${filtered.length}`} />
+        <Metric label="Median swing" value={`${fmt.signed(median(swings))} pts`} />
+        <Metric label="Largest swing" value={str(sorted[0], "state_name")} note={`${fmt.signed(num(sorted[0], "swing_2020_2024"))} pts`} />
+        <Metric label="Median swing, 2026 Senate states" value={`${fmt.signed(median(senateSwings))} pts`} />
+      </Metrics>
+      <p className="muted small">Map colour: swing size. Dark outline: state with a 2026 Senate contest.</p>
+      <VegaChart spec={mapSpec} label="US map of the presidential swing from 2020 to 2024" height={460} />
+      <h3>Every state, ranked by swing</h3>
+      <p className="muted small">Red bars: states with a 2026 Senate contest.</p>
+      <VegaChart spec={barSpec} label="States ranked by presidential swing from 2020 to 2024" />
+      <Sources>
+        <p>{SEATS_SOURCE}</p>
+        <p>Margins use the top Democratic and Republican candidates&apos; shares of the statewide vote. Maine and Nebraska award some electoral votes by district; the statewide vote is used here. Midterm electorates differ from presidential ones, and the president&apos;s party has often lost ground in midterms, so this swing is context, not a forecast.</p>
+      </Sources>
+      <DownloadCsv rows={filtered} columns={SWING_COLS} fileName="presidential_swing_2020_2024.csv" />
+    </View>
+  );
+}
+
+/* ----------------------------------------------------------------------------- why it matters */
+function WorldContext() {
+  return (
+    <section className="context" aria-labelledby="context-title">
+      <h2 id="context-title">Why a US midterm matters beyond the US</h2>
+      <p>The 3 November 2026 election decides who controls Congress for the next two years, and Congress holds powers that reach well beyond American borders:</p>
+      <ul>
+        <li><strong>Money.</strong> No federal money can be spent without an appropriation passed by Congress (US Constitution, Article I, Section 9). That includes military and economic aid abroad: US support for Ukraine has been funded through congressional appropriations, which links this page to the <Link href="/drones">drone losses dashboard</Link>.</li>
+        <li><strong>Sanctions and trade.</strong> Congress regulates commerce with foreign nations (Article I, Section 8) and can write sanctions into law, as it did for Russia in 2017. Sanctions on oil exporters feed directly into the prices on the <Link href="/oil">oil market dashboard</Link>.</li>
+        <li><strong>Treaties and appointments.</strong> The Senate must approve treaties by a two-thirds vote and confirms ambassadors and senior officials (Article II, Section 2), so Senate control shapes foreign policy staffing and commitments.</li>
+      </ul>
+      <p>That is why this dashboard asks how far polls can be off: readers worldwide will see headlines about which party is ahead in the Senate. Knowing that one Senate poll in ten has missed by more than about 11 points, and which seats sit inside that range, helps them judge how much those headlines can actually tell them.</p>
+      <p className="muted small">This section describes constitutional powers and documented legislation; it makes no prediction about the outcome or about any policy that might follow.</p>
+    </section>
   );
 }
 

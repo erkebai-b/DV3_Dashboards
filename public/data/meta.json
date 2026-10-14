@@ -20,6 +20,11 @@
         "file": "/data/oil/country_map.csv",
         "rows": 744,
         "latest_observation": "2024-12-31"
+      },
+      "prices_daily": {
+        "file": "/data/oil/prices_daily.csv",
+        "rows": 1389,
+        "latest_observation": "2026-10-06"
       }
     },
     "elections": {
@@ -32,6 +37,11 @@
         "file": "/data/elections/seats.csv",
         "rows": 35,
         "latest_observation": "2024-11-05"
+      },
+      "swing": {
+        "file": "/data/elections/swing.csv",
+        "rows": 51,
+        "latest_observation": "2024-11-05"
       }
     },
     "drones": {
@@ -42,7 +52,7 @@
       },
       "claims": {
         "file": "/data/drones/claims.csv",
-        "rows": 224,
+        "rows": 229,
         "latest_observation": "2026-09-30"
       },
       "platforms": {
@@ -52,5 +62,5 @@
       }
     }
   },
-  "refreshed_at": "2026-10-14T19:00:18Z"
+  "refreshed_at": "2026-10-14T20:32:09Z"
 }

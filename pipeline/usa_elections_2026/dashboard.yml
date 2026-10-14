@@ -250,6 +250,59 @@ datasets:
       unit: percentage points
       minimum: -200
       maximum: 200
+- id: swing
+  source_ids:
+  - fte_election_results
+  - unitedstates_legislators
+  sample: data/sample_swing.csv
+  processed_output: data/processed_swing.csv
+  format: csv
+  date_column: election_date
+  primary_key:
+  - state
+  minimum_rows: 51
+  latest_observation: '2024-11-05'
+  columns:
+    state:
+      type: string
+      role: geography
+      nullable: false
+    state_name:
+      type: string
+      role: geography
+      nullable: false
+    dem_margin_2020:
+      type: number
+      role: measure
+      nullable: false
+      unit: percentage points (Democrat minus Republican)
+      minimum: -100
+      maximum: 100
+    dem_margin_2024:
+      type: number
+      role: measure
+      nullable: false
+      unit: percentage points (Democrat minus Republican)
+      minimum: -100
+      maximum: 100
+    senate_race_2026:
+      type: string
+      role: dimension
+      nullable: false
+      allowed_values: ['yes', 'no']
+    swing_2020_2024:
+      type: number
+      role: measure
+      nullable: false
+      unit: percentage points
+      minimum: -50
+      maximum: 50
+    election_date:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '2024-11-05'
+      date_maximum: '2024-11-05'
 views:
 - id: polling_error_history
   dataset_id: polls

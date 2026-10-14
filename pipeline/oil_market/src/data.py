@@ -44,11 +44,14 @@ RAW_SOURCES = {
     # DataHub "core/oil-prices" package (EIA series RBRTE and RWTC).
     "brent-monthly.csv": "https://raw.githubusercontent.com/datasets/oil-prices/main/data/brent-monthly.csv",
     "wti-monthly.csv": "https://raw.githubusercontent.com/datasets/oil-prices/main/data/wti-monthly.csv",
+    "brent-daily.csv": "https://raw.githubusercontent.com/datasets/oil-prices/main/data/brent-daily.csv",
+    "wti-daily.csv": "https://raw.githubusercontent.com/datasets/oil-prices/main/data/wti-daily.csv",
     # Energy Institute Statistical Review of World Energy, as compiled by Our World in Data.
     "owid-energy-data.csv": "https://raw.githubusercontent.com/owid/energy-data/master/owid-energy-data.csv",
 }
 
 PRICE_START = "1990-01-01"
+DAILY_START = "2024-01-01"   # the recent-period view: every trading day since the start of 2024
 EI_REGIONS = {
     "Africa (EI)": "Africa",
     "Asia Pacific (EI)": "Asia Pacific",
@@ -73,6 +76,7 @@ DATASET_FILES = {
     "regions": ("data/sample_regions.csv", "data/processed_regions.csv"),
     "countries": ("data/sample_countries.csv", "data/processed_countries.csv"),
     "country_map": ("data/sample_country_map.csv", "data/processed_country_map.csv"),
+    "prices_daily": ("data/sample_prices_daily.csv", "data/processed_prices_daily.csv"),
 }
 
 
@@ -112,6 +116,22 @@ def transform_prices() -> pd.DataFrame:
             }
         )
         frames.append(frame.loc[frame["date"] >= PRICE_START])
+    return pd.concat(frames, ignore_index=True)
+
+
+def transform_prices_daily() -> pd.DataFrame:
+    """Daily Brent and WTI spot prices from 2024 onward (each benchmark's own trading days)."""
+    frames = []
+    for benchmark, name in (("Brent", "brent-daily.csv"), ("WTI", "wti-daily.csv")):
+        raw = pd.read_csv(RAW / name)
+        if list(raw.columns) != ["Date", "Price"]:
+            raise ValueError(f"Unexpected columns in {name}: {list(raw.columns)}")
+        frame = pd.DataFrame({
+            "date": pd.to_datetime(raw["Date"]).dt.strftime("%Y-%m-%d"),
+            "benchmark": benchmark,
+            "price_usd_per_bbl": pd.to_numeric(raw["Price"], errors="raise").round(2),
+        })
+        frames.append(frame.loc[frame["date"] >= DAILY_START])
     return pd.concat(frames, ignore_index=True)
 
 
@@ -227,7 +247,16 @@ def derive_country_map(frame: pd.DataFrame) -> pd.DataFrame:
     return frame[columns].sort_values(["iso_code", "year"]).reset_index(drop=True)
 
 
-DERIVE = {"prices": derive_prices, "regions": derive_regions, "countries": derive_countries,
+def derive_prices_daily(frame: pd.DataFrame) -> pd.DataFrame:
+    """Day-on-day percentage change within each benchmark's own trading calendar."""
+    frame = frame[["date", "benchmark", "price_usd_per_bbl"]].copy()
+    frame = frame.sort_values(["benchmark", "date"]).reset_index(drop=True)
+    previous = frame.groupby("benchmark")["price_usd_per_bbl"].shift(1)
+    frame["change_1d_pct"] = ((frame["price_usd_per_bbl"] / previous - 1) * 100).round(3)
+    return frame
+
+
+DERIVE = {"prices_daily": derive_prices_daily, "prices": derive_prices, "regions": derive_regions, "countries": derive_countries,
           "country_map": derive_country_map}
 
 
@@ -312,7 +341,7 @@ def build(sample_mode: bool) -> dict[str, pd.DataFrame]:
         if not RAW.exists() or not all((RAW / name).exists() for name in RAW_SOURCES):
             acquire()
         base = {"prices": transform_prices(), "regions": transform_regions(), "countries": transform_countries(),
-                "country_map": transform_country_map()}
+                "country_map": transform_country_map(), "prices_daily": transform_prices_daily()}
     frames = {name: DERIVE[name](frame) for name, frame in base.items()}
     for name, frame in frames.items():
         validate(frame, contract[name])

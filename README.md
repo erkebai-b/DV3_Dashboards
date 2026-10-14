@@ -4,7 +4,7 @@ Three evidence dashboards, each answering one question for a specific reader, wi
 
 | Dashboard | Question | Main sources |
 |---|---|---|
-| Oil market (`/oil`) | Where is oil demand still growing, who supplies it, and how have prices responded? | EIA spot prices; Energy Institute Statistical Review (via Our World in Data) |
+| Oil market (`/oil`) | Where is oil demand still growing, who supplies it, and how have prices responded (including daily prices for 2024–2026)? | EIA spot prices; Energy Institute Statistical Review (via Our World in Data) |
 | 2026 US elections (`/elections`) | How far can the polls be off, and which 2026 Senate seats are inside that range? | FiveThirtyEight poll and results archives; @unitedstates legislator roster |
 | Drone losses (`/drones`) | What is claimed, what is verified, and which drone platforms dominate the record? | Ukraine General Staff claims (via Petro Ivaniuk); Oryx verified losses (via Lee Drake) |
 
@@ -53,6 +53,10 @@ Code: MIT (see `LICENSE`). Data stay under their publishers' terms:
 - General Staff of the Armed Forces of Ukraine claims, structured by [Petro Ivaniuk](https://github.com/PetroIvaniuk/2022-Ukraine-Russia-War-Dataset) (MIT)
 - Map boundaries: Natural Earth and US Census Bureau via [world-atlas](https://github.com/topojson/world-atlas) and [us-atlas](https://github.com/topojson/us-atlas) (ISC)
 - [Oryx](https://www.oryxspioenkop.com/2022/02/attack-on-europe-documenting-equipment.html) verified losses, archived by [Lee Drake](https://github.com/leedrake5/Russia-Ukraine) (MIT)
+
+## Evidence ratings
+
+Every headline finding carries a one-to-five-star evidence rating and each dashboard lists what its data cannot show yet. The scale is defined on the site's Method page.
 
 ## Known limits
 

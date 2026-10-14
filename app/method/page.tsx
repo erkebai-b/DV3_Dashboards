@@ -25,6 +25,17 @@ export default function Method() {
         <dt><span className="status status-verified">Verified, lower bound</span></dt><dd>Each item has photo or video evidence; the true total is higher.</dd>
       </dl>
 
+      <h2 id="evidence">Evidence ratings</h2>
+      <p>Each finding carries a rating from one to five stars. It scores how far the sentence can be trusted as stated, using four tests: the kind of source (measured, estimated, or claimed), its coverage, the independence of whoever counted, and how far the sentence reaches beyond what was measured.</p>
+      <dl className="definitions">
+        <dt>★★★★★</dt><dd>Measured or certified values stated without interpretation (market prices, certified election results).</dd>
+        <dt>★★★★</dt><dd>Comprehensive estimates or verified records with a known limitation (revised statistics, lower-bound counts, archives that stop early).</dd>
+        <dt>★★★</dt><dd>A solid pattern whose meaning is contested, often because two sources count different things.</dd>
+        <dt>★★</dt><dd>Unverified claims, or historical data used as a rough guide to a different situation.</dd>
+        <dt>★</dt><dd>Interpretations the data cannot support on their own, such as causes of a price move.</dd>
+      </dl>
+      <p>Below the findings, each dashboard also lists what its data cannot show yet, so missing evidence is visible rather than silent.</p>
+
       <h2>What this site does not do</h2>
       <ul>
         <li>No forecasts. The 2026 election view compares past margins with past polling error; it does not predict results.</li>

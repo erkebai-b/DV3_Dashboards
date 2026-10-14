@@ -167,6 +167,11 @@ month_end,last_report_date,category,claimed_cumulative,reports_in_month,claimed_
 2026-07-31,2026-07-31,Drones (UAVs),435665,31,54489
 2026-08-31,2026-08-31,Drones (UAVs),490402,31,54737
 2026-09-30,2026-09-30,Drones (UAVs),540095,30,49693
+2026-05-31,2026-05-31,Ground robotic systems,1519,31,
+2026-06-30,2026-06-30,Ground robotic systems,1777,30,258
+2026-07-31,2026-07-31,Ground robotic systems,2081,31,304
+2026-08-31,2026-08-31,Ground robotic systems,2442,31,361
+2026-09-30,2026-09-30,Ground robotic systems,2789,30,347
 2022-02-28,2022-02-28,Tanks,150,4,150
 2022-03-31,2022-03-31,Tanks,614,31,464
 2022-04-30,2022-04-30,Tanks,1008,30,394

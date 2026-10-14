@@ -142,6 +142,7 @@ datasets:
       - Tanks
       - Artillery systems
       - Armoured combat vehicles
+      - Ground robotic systems
     claimed_cumulative:
       type: integer
       role: measure
@@ -159,7 +160,7 @@ datasets:
     claimed_in_month:
       type: integer
       role: measure
-      nullable: false
+      nullable: true
       unit: items claimed per month
       minimum: -10000
       maximum: 1000000
