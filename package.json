@@ -28,6 +28,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.28",
-    "typescript": "^5"
+    "i18n-iso-countries": "7.14.0",
+    "typescript": "^5",
+    "us-atlas": "3.0.1",
+    "world-atlas": "2.0.2"
   }
 }

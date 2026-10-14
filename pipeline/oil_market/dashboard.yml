@@ -237,6 +237,73 @@ datasets:
       unit: kilowatt-hours per person
       minimum: 0
       maximum: 150000
+- id: country_map
+  source_ids:
+  - ei_statistical_review
+  - owid_energy_data
+  sample: data/sample_country_map.csv
+  processed_output: data/processed_country_map.csv
+  format: csv
+  date_column: date
+  primary_key:
+  - year
+  - iso_code
+  minimum_rows: 500
+  latest_observation: '2024-12-31'
+  columns:
+    date:
+      type: date
+      role: time
+      nullable: false
+      date_minimum: '2017-12-31'
+      date_maximum: '2024-12-31'
+    year:
+      type: integer
+      role: time
+      nullable: false
+    iso_code:
+      type: string
+      role: geography
+      nullable: false
+    country:
+      type: string
+      role: geography
+      nullable: false
+    oil_production_twh:
+      type: number
+      role: measure
+      nullable: true
+      unit: terawatt-hours (TWh)
+      minimum: 0
+      maximum: 20000
+    oil_consumption_twh:
+      type: number
+      role: measure
+      nullable: true
+      unit: terawatt-hours (TWh)
+      minimum: 0
+      maximum: 20000
+    net_balance_twh:
+      type: number
+      role: measure
+      nullable: true
+      unit: terawatt-hours (TWh)
+      minimum: -20000
+      maximum: 20000
+    oil_per_capita_kwh:
+      type: number
+      role: measure
+      nullable: true
+      unit: kilowatt-hours per person
+      minimum: 0
+      maximum: 200000
+    oil_share_energy_pct:
+      type: number
+      role: measure
+      nullable: true
+      unit: percent of primary energy
+      minimum: 0
+      maximum: 100
 views:
 - id: demand_shift
   dataset_id: countries

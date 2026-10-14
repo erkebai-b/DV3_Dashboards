@@ -15,6 +15,11 @@
         "file": "/data/oil/countries.csv",
         "rows": 400,
         "latest_observation": "2024-12-31"
+      },
+      "country_map": {
+        "file": "/data/oil/country_map.csv",
+        "rows": 744,
+        "latest_observation": "2024-12-31"
       }
     },
     "elections": {

@@ -37,7 +37,8 @@ PUBLIC = HERE.parent / "public" / "data"
 
 # dashboard folder -> (web slug, {dataset id: published file name})
 DASHBOARDS = {
-    "oil_market": ("oil", {"prices": "prices.csv", "regions": "regions.csv", "countries": "countries.csv"}),
+    "oil_market": ("oil", {"prices": "prices.csv", "regions": "regions.csv", "countries": "countries.csv",
+                           "country_map": "country_map.csv"}),
     "usa_elections_2026": ("elections", {"polls": "polls.csv", "seats": "seats.csv"}),
     "drone_industry": ("drones", {"comparison": "comparison.csv", "claims": "claims.csv",
                                   "platforms": "platforms.csv"}),

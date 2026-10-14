@@ -5,6 +5,7 @@ import type { TopLevelSpec } from "vega-lite";
 import { type Row, num, str, useDatasets } from "@/lib/data";
 import { fmt, groupBy, mean, median, quantile } from "@/lib/stats";
 import { useDarkMode, VegaChart } from "@/components/VegaChart";
+import { choropleth, classify, STATE_FIPS } from "@/lib/maps";
 import {
   ChipSelect, Controls, DownloadCsv, Empty, Findings, Loading, Metric, Metrics, Provenance, RangeSelect, Segmented,
   SelectControl, Sources, Table, View,
@@ -229,6 +230,21 @@ function SeatsView({ polls, seats }: { polls: Row[]; seats: Row[] }) {
 
   const table = [...plot].sort((a, b) => Math.abs(a.baseline) - Math.abs(b.baseline));
 
+  const marginLabels = ["R by 20+", "R by 10–20", "R by 5–10", "R by 0–5", "D by 0–5", "D by 5–10", "D by 10–20", "D by 20+"];
+  const mapRows = plot.map((p) => ({ marginClass: classify(p.baseline, [-20, -10, -5, 0, 5, 10, 20], marginLabels), id: STATE_FIPS[String((p as Record<string, unknown>).state)], baseline: p.baseline, inside: p.inside, label: p.label,
+    incumbent: String((p as Record<string, unknown>).incumbent), party: p.incumbent_party, exceeded: p.exceeded }));
+  const mapSpec = useMemo(() => choropleth({
+    url: "/geo/us-states-10m.json", feature: "states", projection: "albersUsa", rows: mapRows, height: 420, dark,
+    fields: ["baseline", "label", "incumbent", "party", "exceeded", "inside", "marginClass"], strokeField: "inside",
+    color: { field: "marginClass", type: "nominal", title: "Baseline margin, points",
+      scale: { domain: marginLabels, range: ["#9e1b1b", "#d43d3d", "#ec8a87", "#f6c9c6", "#c6dbf5", "#7fb0ec", "#2a78d6", "#154a8f"] },
+      legend: { orient: "bottom", direction: "horizontal", columns: 4, symbolType: "square" } },
+    tooltip: [{ field: "label", title: "Seat" }, { field: "incumbent", title: "Incumbent" }, { field: "party", title: "Party" },
+      { field: "baseline", title: "Margin (pts)", format: "+.1f" },
+      { field: "exceeded", title: "% of Senate polls with a bigger error", format: ".0f" }],
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [JSON.stringify(mapRows), dark]);
+
   return (
     <View id="senate-2026" title="Which 2026 Senate seats sit inside the historical polling error?" unit="Percentage points of the Democrat-minus-Republican margin (negative = Republican lead). Shaded band: ± the chosen percentile of absolute error in Senate polls, 1998–2022.">
       <Provenance by="@unitedstates roster; FiveThirtyEight results" status="observed" latest={seats.map((s) => str(s, "last_election_date")).sort().at(-1)!} note="seats and incumbents as listed 15 Oct 2026; election day 3 Nov 2026" />
@@ -245,6 +261,10 @@ function SeatsView({ polls, seats }: { polls: Row[]; seats: Row[] }) {
             <Metric label="Held by Democrats" value={String(inside.filter((p) => p.incumbent_party === "Democrat").length)} />
             <Metric label="Held by Republicans" value={String(inside.filter((p) => p.incumbent_party === "Republican").length)} />
           </Metrics>
+          <h3>Where the 2026 Senate contests are</h3>
+          <p className="muted small">Colour: the chosen baseline margin (blue = Democratic lead, red = Republican lead). Dark outline: inside the ± {fmt.dec(threshold)}-point band. Grey: no Senate contest in 2026.</p>
+          <VegaChart spec={mapSpec} label="US map of 2026 Senate contests coloured by baseline margin" height={480} />
+          <h3>Every seat against the error band</h3>
           <VegaChart spec={spec} label="2026 Senate seats by baseline margin against the polling error band" />
           <h3>Seats ranked by closeness</h3>
           <Table caption="2026 Senate seats ranked by closeness of the chosen baseline" maxHeight={360} rows={table} columns={[

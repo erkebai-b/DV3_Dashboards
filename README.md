@@ -22,7 +22,7 @@ GitHub Actions (daily)            GitHub repo                       Vercel
 - **Pipelines** (`pipeline/<dashboard>/src/data.py`) acquire raw public data, shape it into tidy record-level tables and validate them against a data contract (`pipeline/<dashboard>/dashboard.yml`): column types, primary keys, missing values, allowed values, units and ranges, plus cross-checks such as regional oil totals reproducing the world total.
 - **Refresh** (`.github/workflows/refresh-data.yml`) runs every day. If any validation fails, the job stops and the site keeps its last good data. Only two contract fields are relaxed for live refreshes because they legitimately move: the latest observation date and the maximum date.
 - **CI** (`.github/workflows/ci.yml`) rebuilds every dataset offline from the bundled samples and validates it against the full contract, then lints and builds the site.
-- **Front end**: Next.js 15 (App Router, statically prerendered), Vega-Lite charts, no backend. Filtering, headline findings and CSV downloads run in the browser from the published CSV files.
+- **Front end**: Next.js 15 (App Router, statically prerendered), Vega-Lite charts and maps (TopoJSON boundaries), no backend. Filtering, headline findings and CSV downloads run in the browser from the published CSV files.
 
 ## Run locally
 
@@ -51,6 +51,7 @@ Code: MIT (see `LICENSE`). Data stay under their publishers' terms:
 - [FiveThirtyEight](https://github.com/fivethirtyeight/data) pollster ratings and [election results](https://github.com/fivethirtyeight/election-results) (CC BY 4.0; archived)
 - [@unitedstates congress-legislators](https://github.com/unitedstates/congress-legislators) (CC0)
 - General Staff of the Armed Forces of Ukraine claims, structured by [Petro Ivaniuk](https://github.com/PetroIvaniuk/2022-Ukraine-Russia-War-Dataset) (MIT)
+- Map boundaries: Natural Earth and US Census Bureau via [world-atlas](https://github.com/topojson/world-atlas) and [us-atlas](https://github.com/topojson/us-atlas) (ISC)
 - [Oryx](https://www.oryxspioenkop.com/2022/02/attack-on-europe-documenting-equipment.html) verified losses, archived by [Lee Drake](https://github.com/leedrake5/Russia-Ukraine) (MIT)
 
 ## Known limits

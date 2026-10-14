@@ -6,6 +6,8 @@ import { type Row, num, str, useDatasets } from "@/lib/data";
 import { scaleFor } from "@/lib/palette";
 import { fmt } from "@/lib/stats";
 import { useDarkMode, VegaChart } from "@/components/VegaChart";
+import { blues, choropleth, classify } from "@/lib/maps";
+import { useIsoNumeric } from "@/lib/useIso";
 import {
   ChipSelect, Controls, DownloadCsv, Empty, Findings, Loading, Metric, Metrics, Provenance, RangeSelect, Segmented,
   Sources, Table, View,
@@ -18,6 +20,8 @@ const REGION_COLS = ["date", "year", "region", "oil_production_twh", "oil_consum
   "share_of_world_production_pct", "share_of_world_consumption_pct"];
 const COUNTRY_COLS = ["date", "year", "country", "oil_consumption_twh", "consumption_index_2019", "oil_share_energy_pct",
   "oil_per_capita_kwh"];
+const MAP_COLS = ["date", "year", "iso_code", "country", "oil_production_twh", "oil_consumption_twh", "net_balance_twh",
+  "oil_per_capita_kwh", "oil_share_energy_pct"];
 
 const EIA = <><cite>Spot Prices for Crude Oil and Petroleum Products: Europe Brent (RBRTE) and Cushing, OK WTI (RWTC)</cite>, U.S. Energy Information Administration, via <a href="https://github.com/datasets/oil-prices">DataHub core/oil-prices</a> (ODC-PDDL).</>;
 const EI = <><cite>Statistical Review of World Energy 2025</cite>, Energy Institute, compiled in <a href="https://github.com/owid/energy-data">Our World in Data energy dataset</a> (CC BY 4.0).</>;
@@ -27,14 +31,17 @@ export default function OilDashboard() {
     prices: { path: "/data/oil/prices.csv", numeric: ["price_usd_per_bbl", "change_12m_pct"] },
     regions: { path: "/data/oil/regions.csv", numeric: REGION_COLS.slice(1).filter((c) => c !== "region") },
     countries: { path: "/data/oil/countries.csv", numeric: COUNTRY_COLS.slice(1).filter((c) => c !== "country") },
+    countryMap: { path: "/data/oil/country_map.csv", numeric: ["year", "oil_production_twh", "oil_consumption_twh",
+      "net_balance_twh", "oil_per_capita_kwh", "oil_share_energy_pct"] },
   });
   if (state.status !== "ready") return <Loading state={state} />;
-  const { prices, regions, countries } = state.data;
+  const { prices, regions, countries, countryMap } = state.data;
   return (
     <>
       <Findings items={findings(prices, regions, countries)} />
       <DemandView countries={countries} />
       <BalanceView regions={regions} />
+      <CountryMapView rows={countryMap} />
       <PriceView prices={prices} />
     </>
   );
@@ -341,5 +348,90 @@ function PriceView({ prices }: { prices: Row[] }) {
       </Sources>
       <DownloadCsv rows={filtered} columns={PRICE_COLS} fileName="oil_spot_prices.csv" />
     </View>
+  );
+}
+
+/* ----------------------------------------------------------------------------- country map */
+const MAP_MEASURES: Record<string, { field: string; unit: string }> = {
+  "Net balance": { field: "net_balance_twh", unit: "TWh" },
+  Production: { field: "oil_production_twh", unit: "TWh" },
+  Consumption: { field: "oil_consumption_twh", unit: "TWh" },
+  "Use per person": { field: "oil_per_capita_kwh", unit: "kWh per person" },
+  "Share of energy": { field: "oil_share_energy_pct", unit: "% of primary energy" },
+};
+const NET_BREAKS = [-2000, -500, -100, 0, 100, 500, 2000];
+const NET_LABELS = ["Imports > 2,000", "Imports 500–2,000", "Imports 100–500", "Imports < 100",
+  "Exports < 100", "Exports 100–500", "Exports 500–2,000", "Exports > 2,000"];
+const NET_COLORS = ["#a8410f", "#d95926", "#f0a37f", "#f6d5c4", "#c3d9f3", "#6da7ec", "#256abf", "#0d366b"];
+
+function CountryMapView({ rows }: { rows: Row[] }) {
+  const dark = useDarkMode();
+  const iso = useIsoNumeric();
+  const years = useMemo(() => Array.from(new Set(rows.map((r) => String(r.year)))).sort(), [rows]);
+  const [year, setYear] = useState(years.at(-1)!);
+  const [measureLabel, setMeasure] = useState("Net balance");
+  const measure = MAP_MEASURES[measureLabel];
+  const filtered = useMemo(() => rows.filter((r) => String(r.year) === year), [rows, year]);
+  const reported = filtered.filter((r) => r[measure.field] !== null);
+
+  const mapRows = useMemo(() => (iso ? filtered.filter((r) => iso[str(r, "iso_code")] && r[measure.field] !== null)
+    .map((r) => ({ ...r, id: iso[str(r, "iso_code")], value: r[measure.field],
+      netClass: r.net_balance_twh === null ? null : classify(num(r, "net_balance_twh"), NET_BREAKS, NET_LABELS) })) : []),
+  [filtered, iso, measure.field]);
+
+  const color = measure.field === "net_balance_twh"
+    ? { field: "netClass", type: "nominal", title: "Net balance, TWh per year",
+        scale: { domain: NET_LABELS, range: NET_COLORS },
+        legend: { orient: "bottom", direction: "horizontal", columns: 4, symbolType: "square", labelLimit: 160 } }
+    : { field: "value", type: "quantitative", title: `${measureLabel} (${measure.unit})`,
+        scale: { type: measure.field === "oil_share_energy_pct" ? "linear" : "log", range: blues(dark) },
+        legend: { orient: "bottom", direction: "horizontal", gradientLength: 320, format: "~s" } };
+
+  const spec = useMemo(() => choropleth({
+    url: "/geo/world-110m.json", feature: "countries", projection: "equalEarth", rows: mapRows, height: 440, dark,
+    fields: ["value", "country", "oil_production_twh", "oil_consumption_twh", "net_balance_twh", "netClass"],
+    color,
+    tooltip: [{ field: "country", title: "Country" }, { field: "value", title: `${measureLabel} (${measure.unit})`, format: ",.1f" },
+      { field: "oil_production_twh", title: "Production (TWh)", format: ",.0f" },
+      { field: "oil_consumption_twh", title: "Consumption (TWh)", format: ",.0f" }],
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [mapRows, dark, measureLabel]);
+
+  const net = filtered.filter((r) => r.net_balance_twh !== null).sort((a, b) => num(b, "net_balance_twh") - num(a, "net_balance_twh"));
+  const consumers = filtered.filter((r) => r.oil_consumption_twh !== null).length;
+
+  return (
+    <View id="country-map" title="Who produces more oil than they consume? Country map" unit="Terawatt-hours (TWh) per year for production, consumption and net balance; kilowatt-hours per person; percent of primary energy.">
+      <Provenance by="Energy Institute, via Our World in Data" status="estimated" latest={rows.map((r) => str(r, "date")).sort().at(-1)!} note="calendar-year values; map starts in 2017" />
+      <Controls>
+        <RangeSelectSingle label="Year" options={years} value={year} onChange={setYear} />
+        <Segmented label="Measure" options={Object.keys(MAP_MEASURES)} value={measureLabel} onChange={setMeasure} />
+      </Controls>
+      {net.length > 0 && (
+        <Metrics>
+          <Metric label={`Largest net exporter, ${year}`} value={str(net[0], "country")} note={`${fmt.signed(num(net[0], "net_balance_twh"), 0)} TWh`} />
+          <Metric label={`Largest net importer, ${year}`} value={str(net.at(-1)!, "country")} note={`${fmt.signed(num(net.at(-1)!, "net_balance_twh"), 0)} TWh`} />
+          <Metric label="Countries shown for this measure" value={`${reported.length}`} note={measure.field === "net_balance_twh" ? `of ${consumers} with consumption reported` : undefined} />
+        </Metrics>
+      )}
+      {iso === null ? <p className="loading">Loading map…</p> : <VegaChart spec={spec} label={`World map of ${measureLabel.toLowerCase()} in ${year}`} height={500} />}
+      <p className="muted small">Grey: not separately reported by the Energy Institute for this measure. The Statistical Review lists production only for larger producers, so net balance appears where both production and consumption are listed; it is never assumed to be zero.</p>
+      <Sources>
+        <p>{EI}</p>
+        <p>Before 2017 Our World in Data fills country production from a second source, so the map starts in 2017 to keep a single source. Boundaries: Natural Earth via world-atlas (public domain); they are illustrative and imply no position on disputed territories.</p>
+      </Sources>
+      <DownloadCsv rows={filtered} columns={MAP_COLS} fileName={`oil_by_country_${year}.csv`} />
+    </View>
+  );
+}
+
+function RangeSelectSingle({ label, options, value, onChange }: { label: string; options: string[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="control">
+      <span className="legend">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </label>
   );
 }

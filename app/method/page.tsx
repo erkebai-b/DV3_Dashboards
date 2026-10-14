@@ -29,11 +29,12 @@ export default function Method() {
       <ul>
         <li>No forecasts. The 2026 election view compares past margins with past polling error; it does not predict results.</li>
         <li>No causal claims from correlation. Price moves, demand shifts and loss trends are described, not attributed.</li>
+        <li>No guessed values on maps. Where a source does not report a country separately, it stays grey rather than being filled with zero or an estimate.</li>
         <li>No merged war-loss totals. Claimed and verified figures stay in separate series because they count different things.</li>
       </ul>
 
       <h2>Licences</h2>
-      <p>Code is released under the MIT licence. Data remain under their publishers&apos; terms: EIA (public domain, via DataHub ODC-PDDL), Our World in Data (CC BY 4.0), FiveThirtyEight (CC BY 4.0), @unitedstates (CC0), and the MIT-licensed Ivaniuk and Drake repositories. The Energy Institute and Oryx are credited as original sources.</p>
+      <p>Code is released under the MIT licence. Data remain under their publishers&apos; terms: EIA (public domain, via DataHub ODC-PDDL), Our World in Data (CC BY 4.0), FiveThirtyEight (CC BY 4.0), @unitedstates (CC0), and the MIT-licensed Ivaniuk and Drake repositories. The Energy Institute and Oryx are credited as original sources. Map boundaries come from Natural Earth (world) and the US Census Bureau (states), packaged by world-atlas and us-atlas (ISC licence); they are illustrative and imply no position on disputed territories.</p>
     </article>
   );
 }

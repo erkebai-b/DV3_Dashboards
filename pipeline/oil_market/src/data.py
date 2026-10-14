@@ -64,11 +64,15 @@ COUNTRIES = [
     "United Kingdom", "Norway",
 ]
 COUNTRY_START, INDEX_YEAR = 2000, 2019
+# Before 2017 OWID fills country oil production from a second source (The Shift Data Portal);
+# from 2017 every production value comes from the Energy Institute, so the map starts there.
+MAP_START = 2017
 
 DATASET_FILES = {
     "prices": ("data/sample.csv", "data/processed.csv"),
     "regions": ("data/sample_regions.csv", "data/processed_regions.csv"),
     "countries": ("data/sample_countries.csv", "data/processed_countries.csv"),
+    "country_map": ("data/sample_country_map.csv", "data/processed_country_map.csv"),
 }
 
 
@@ -146,6 +150,29 @@ def transform_countries() -> pd.DataFrame:
     ).reset_index(drop=True)
 
 
+def transform_country_map() -> pd.DataFrame:
+    """Every country the Energy Institute reports, 2017 onward, for the world map.
+
+    Production is only reported separately for larger producers, so it stays missing
+    (not zero) where the source does not list it; net balance is then missing too.
+    """
+    owid = _owid()
+    iso = owid["iso_code"].fillna("")
+    keep = owid.loc[iso.str.fullmatch(r"[A-Z]{3}") & (owid["year"] >= MAP_START)].copy()
+    keep = keep.loc[keep["oil_consumption"].notna() | keep["oil_production"].notna()]
+    return pd.DataFrame(
+        {
+            "year": keep["year"].astype(int),
+            "iso_code": keep["iso_code"],
+            "country": keep["country"],
+            "oil_production_twh": keep["oil_production"].round(3),
+            "oil_consumption_twh": keep["oil_consumption"].round(3),
+            "oil_per_capita_kwh": keep["oil_energy_per_capita"].round(1),
+            "oil_share_energy_pct": keep["oil_share_energy"].round(3),
+        }
+    ).reset_index(drop=True)
+
+
 # --------------------------------------------------------------------------- derive
 def derive_prices(frame: pd.DataFrame) -> pd.DataFrame:
     """Add the 12-month percentage change for each benchmark."""
@@ -189,7 +216,19 @@ def derive_countries(frame: pd.DataFrame) -> pd.DataFrame:
     return frame[columns].sort_values(["country", "year"]).reset_index(drop=True)
 
 
-DERIVE = {"prices": derive_prices, "regions": derive_regions, "countries": derive_countries}
+def derive_country_map(frame: pd.DataFrame) -> pd.DataFrame:
+    """Net balance where both production and consumption are reported; otherwise left missing."""
+    frame = frame[["year", "iso_code", "country", "oil_production_twh", "oil_consumption_twh",
+                   "oil_per_capita_kwh", "oil_share_energy_pct"]].copy()
+    frame["date"] = frame["year"].astype(int).astype(str) + "-12-31"
+    frame["net_balance_twh"] = (frame["oil_production_twh"] - frame["oil_consumption_twh"]).round(3)
+    columns = ["date", "year", "iso_code", "country", "oil_production_twh", "oil_consumption_twh", "net_balance_twh",
+               "oil_per_capita_kwh", "oil_share_energy_pct"]
+    return frame[columns].sort_values(["iso_code", "year"]).reset_index(drop=True)
+
+
+DERIVE = {"prices": derive_prices, "regions": derive_regions, "countries": derive_countries,
+          "country_map": derive_country_map}
 
 
 # --------------------------------------------------------------------------- validate
@@ -272,7 +311,8 @@ def build(sample_mode: bool) -> dict[str, pd.DataFrame]:
     else:
         if not RAW.exists() or not all((RAW / name).exists() for name in RAW_SOURCES):
             acquire()
-        base = {"prices": transform_prices(), "regions": transform_regions(), "countries": transform_countries()}
+        base = {"prices": transform_prices(), "regions": transform_regions(), "countries": transform_countries(),
+                "country_map": transform_country_map()}
     frames = {name: DERIVE[name](frame) for name, frame in base.items()}
     for name, frame in frames.items():
         validate(frame, contract[name])

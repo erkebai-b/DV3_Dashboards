@@ -6,6 +6,8 @@ import { type Row, num, str, useDatasets } from "@/lib/data";
 import { PALETTE_DARK, PALETTE_LIGHT } from "@/lib/palette";
 import { fmt } from "@/lib/stats";
 import { useDarkMode, VegaChart } from "@/components/VegaChart";
+import { blues, choropleth, ORIGIN_ISO3 } from "@/lib/maps";
+import { useIsoNumeric } from "@/lib/useIso";
 import {
   ChipSelect, Controls, DownloadCsv, Empty, Findings, Loading, Metric, Metrics, Provenance, RangeSelect, Segmented,
   Sources, Table, View,
@@ -207,6 +209,27 @@ function PlatformView({ platforms, comparison }: { platforms: Row[]; comparison:
   const oryxTotal = num(comparison.at(-1)!, side === "Russia" ? "verified_russian_uavs" : "verified_ukrainian_uavs");
   const top15 = filtered.slice(0, 15);
   const palette = dark ? PALETTE_DARK : PALETTE_LIGHT;
+  const iso = useIsoNumeric();
+
+  const byOrigin = useMemo(() => {
+    const totals = new Map<string, { total: number; captured: number; platforms: number }>();
+    for (const r of filtered) {
+      const t = totals.get(str(r, "origin_country")) ?? { total: 0, captured: 0, platforms: 0 };
+      t.total += num(r, "total"); t.captured += num(r, "captured"); t.platforms += 1;
+      totals.set(str(r, "origin_country"), t);
+    }
+    return Array.from(totals.entries()).map(([origin, t]) => ({ origin, ...t }));
+  }, [filtered]);
+  const originRows = useMemo(() => (iso ? byOrigin.filter((o) => ORIGIN_ISO3[o.origin] && iso[ORIGIN_ISO3[o.origin]])
+    .map((o) => ({ ...o, id: iso[ORIGIN_ISO3[o.origin]] })) : []), [byOrigin, iso]);
+  const originSpec = useMemo(() => choropleth({
+    url: "/geo/world-110m.json", feature: "countries", projection: "equalEarth", rows: originRows, height: 380, dark,
+    fields: ["total", "origin", "platforms", "captured"],
+    color: { field: "total", type: "quantitative", title: "Documented losses (drones)", scale: { type: "log", range: blues(dark) },
+      legend: { orient: "bottom", direction: "horizontal", gradientLength: 300, format: "~s" } },
+    tooltip: [{ field: "origin", title: "Country of origin" }, { field: "total", title: "Documented losses" },
+      { field: "platforms", title: "Platforms" }, { field: "captured", title: "Captured" }],
+  }), [originRows, dark]);
 
   const long = useMemo(() => top15.flatMap((r) => STATUSES.map((s, i) => ({ platform: r.platform, origin: r.origin_country,
     total: r.total, status: s, rank: i, count: r[s] }))), [top15]);
@@ -237,6 +260,9 @@ function PlatformView({ platforms, comparison }: { platforms: Row[]; comparison:
             <Metric label="Most-documented platform" value={str(filtered[0], "platform")} note={`${Math.round((num(filtered[0], "total") / total) * 100)}% of selection`} />
             <Metric label="Coverage of Oryx's UAV total" value={`${Math.round((sideTotal / oryxTotal) * 100)}%`} note={`${fmt.int(sideTotal)} of ${fmt.int(oryxTotal)} (${side})`} />
           </Metrics>
+          <h3>Where the lost drones were made</h3>
+          <p className="muted small">Documented {side === "Russia" ? "Russian" : "Ukrainian"} UAV losses by the country Oryx flags as the producer (log scale). Grey: no listed platforms of that origin.</p>
+          {iso === null ? <p className="loading">Loading map…</p> : <VegaChart spec={originSpec} label="World map of documented drone losses by country of origin" height={440} />}
           <h3>Top {top15.length} platforms by documented losses</h3>
           <VegaChart spec={spec} label="Top platforms by documented losses, stacked by status" />
           <Table caption="All matching platforms" maxHeight={300} rows={filtered} columns={[
