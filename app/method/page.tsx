@@ -26,6 +26,21 @@ export default function Method() {
         <dt><span className="status status-curated">Curated by hand</span></dt><dd>Entered from cited reports into a spreadsheet kept in the repository (2026 polls). Every row carries its source link and passes the same validation before it is published.</dd>
       </dl>
 
+      <h2 id="glossary">Words used on this site</h2>
+      <dl className="definitions glossary">
+        <dt>Barrel</dt><dd>The standard unit for oil: 159 litres.</dd>
+        <dt>Brent and WTI</dt><dd>The two main oil prices. Brent is the world benchmark (North Sea oil); WTI is the American one (Texas oil).</dd>
+        <dt>TWh</dt><dd>Terawatt-hours, a measure of energy. It lets oil be compared with other energy sources.</dd>
+        <dt>Net importer / exporter</dt><dd>A country that buys more oil than it sells (importer), or sells more than it buys (exporter).</dd>
+        <dt>Margin</dt><dd>How far the winner was ahead. &quot;D+6&quot; means the Democrat leads by 6 percentage points; &quot;R+2&quot; means the Republican leads by 2.</dd>
+        <dt>Polling error</dt><dd>How far a poll ended up from the real result.</dd>
+        <dt>Swing</dt><dd>How much a state&apos;s vote moved between two elections, toward one party or the other.</dd>
+        <dt>Midterm election</dt><dd>The US election held halfway through a president&apos;s four-year term, deciding Congress but not the presidency.</dd>
+        <dt>Generic ballot</dt><dd>A poll question asking which party people will vote for in Congress, without naming candidates.</dd>
+        <dt>UAV</dt><dd>Uncrewed aerial vehicle: a drone.</dd>
+        <dt>Claimed vs verified</dt><dd>Claimed: reported by one side of the war. Verified: proven with a photo or video of that specific item.</dd>
+      </dl>
+
       <h2 id="evidence">Evidence ratings</h2>
       <p>Each finding carries a rating from one to five stars. It scores how far the sentence can be trusted as stated, using four tests: the kind of source (measured, estimated, or claimed), its coverage, the independence of whoever counted, and how far the sentence reaches beyond what was measured.</p>
       <dl className="definitions">

@@ -91,7 +91,7 @@ function ComparisonView({ comparison }: { comparison: Row[] }) {
   const dark = useDarkMode();
   const months = useMemo(() => comparison.map((r) => str(r, "month_end")), [comparison]);
   const [period, setPeriod] = useState<[string, string]>([months[0], months.at(-1)!]);
-  const [scale, setScale] = useState("Logarithmic");
+  const [scale, setScale] = useState("Fit both lines");
   const filtered = useMemo(() => comparison.filter((r) => str(r, "month_end") >= period[0] && str(r, "month_end") <= period[1]), [comparison, period]);
   const start = filtered[0];
   const end = filtered.at(-1);
@@ -106,8 +106,8 @@ function ComparisonView({ comparison }: { comparison: Row[] }) {
     mark: { type: "line", point: { size: 24 } },
     encoding: {
       x: { field: "month", type: "temporal", title: null },
-      y: { field: "drones", type: "quantitative", scale: { type: scale === "Logarithmic" ? "log" : "linear" },
-        title: `Cumulative Russian drones (${scale.toLowerCase()} scale)` },
+      y: { field: "drones", type: "quantitative", scale: { type: scale === "Fit both lines" ? "log" : "linear" },
+        title: scale === "Fit both lines" ? "Cumulative Russian drones (×10 steps)" : "Cumulative Russian drones" },
       color: { field: "series", type: "nominal", scale: { domain: [CLAIMED, VERIFIED], range: [palette[1], palette[0]] },
         legend: { title: null, orient: "top", labelLimit: 400 } },
       tooltip: [{ field: "month", type: "temporal", title: "Month end", format: "%b %Y" }, { field: "series" }, { field: "drones", title: "Cumulative", format: "," }],
@@ -115,11 +115,11 @@ function ComparisonView({ comparison }: { comparison: Row[] }) {
   }), [long, scale, palette]);
 
   return (
-    <View id="claimed-vs-verified" title="Claimed versus photo-verified: Russian drone losses" unit="Drones (uncrewed aerial vehicles), cumulative since 24 February 2022; ratio = claims per photo-verified loss.">
+    <View id="claimed-vs-verified" plain={<>Ukraine says it has destroyed hundreds of thousands of Russian drones. Only a few hundred of those losses can be confirmed with photos.</>} howTo={<>The orange line is what Ukraine&apos;s army reports. The blue line is losses proven with a photo or video. &quot;Fit both lines&quot; makes each step on the scale ten times bigger than the last, so both lines fit; &quot;True proportions&quot; shows how far apart they really are.</>} title="Claimed versus photo-verified: Russian drone losses" unit="Drones (uncrewed aerial vehicles), cumulative since 24 February 2022; ratio = claims per photo-verified loss.">
       <Provenance by="Ukraine's General Staff (claims) and Oryx (verification)" status="claimed" latest={months.at(-1)!} note="Oryx dropped its reconnaissance-UAV category in May 2026, so the comparison stops here" />
       <Controls>
         <RangeSelect label="Period" options={months} value={period} onChange={setPeriod} format={fmt.month} />
-        <Segmented label="Vertical scale" options={["Logarithmic", "Linear"]} value={scale} onChange={setScale} />
+        <Segmented label="Vertical scale" options={["Fit both lines", "True proportions"]} value={scale} onChange={setScale} />
       </Controls>
       {!start || !end ? <Empty>No months in this period. Widen the range.</Empty> : (
         <>
@@ -178,7 +178,7 @@ function ClaimsView({ claims }: { claims: Row[] }) {
   })), [filtered, shown, palette, period]);
 
   return (
-    <View id="claims-by-category" title="How the claimed loss mix shifted to drones" unit="Items claimed destroyed per calendar month: the change in the cumulative total between month ends.">
+    <View id="claims-by-category" plain={<>Drones now dominate the fighting. Ukraine reports destroying tens of thousands of Russian drones a month, far more than tanks or artillery.</>} howTo={<>Each small chart is one type of equipment. Each bar is one month. Each chart has its own scale, so compare the shapes, not the heights.</>} title="How the claimed loss mix shifted to drones" unit="Items claimed destroyed per calendar month: the change in the cumulative total between month ends.">
       <Provenance by="General Staff of the Armed Forces of Ukraine" status="claimed" latest={months.at(-1)!} note="last complete month" />
       <Controls>
         <ChipSelect label="Categories" options={CATEGORIES} value={chosen} onChange={setChosen} />
@@ -264,7 +264,7 @@ function PlatformView({ platforms, comparison }: { platforms: Row[]; comparison:
   }), [long, top15, palette, dark]);
 
   return (
-    <View id="platforms" title="Which drone platforms dominate the photo-verified record?" unit="Drones (individual airframes) with photo or video evidence of loss, cumulative to the snapshot date.">
+    <View id="platforms" plain={<>Among drones with photo proof, a handful of models make up most losses, and many were captured intact rather than destroyed.</>} howTo={<>Each bar is one drone model; its length is how many were lost. The colours show whether it was destroyed, damaged, abandoned or captured. The map shows where those drones were made.</>} title="Which drone platforms dominate the photo-verified record?" unit="Drones (individual airframes) with photo or video evidence of loss, cumulative to the snapshot date.">
       <Provenance by="Oryx (via Lee Drake's daily archive)" status="verified" latest={str(platforms[0], "snapshot_date")} note="last snapshot listing reconnaissance UAVs" />
       <Controls>
         <Segmented label="Side that lost the equipment" options={["Russia", "Ukraine"]} value={side} onChange={setSide} />

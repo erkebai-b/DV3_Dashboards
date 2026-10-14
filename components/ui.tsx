@@ -41,11 +41,15 @@ export function Provenance({ by, status, latest, note }: { by: string; status: S
   );
 }
 
-export function View({ id, title, unit, children }: { id: string; title: string; unit: string; children: ReactNode }) {
+export function View({ id, title, unit, plain, howTo, children }: {
+  id: string; title: string; unit: string; plain?: ReactNode; howTo?: ReactNode; children: ReactNode;
+}) {
   return (
     <section className="view" id={id} aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`}>{title}</h2>
-      <p className="unit">{unit}</p>
+      {plain && <p className="plain">{plain}</p>}
+      {howTo && <p className="how-to"><span className="how-to-label">How to read it</span>{howTo}</p>}
+      <p className="unit">Units: {unit}</p>
       {children}
     </section>
   );
@@ -159,7 +163,12 @@ export function Empty({ children }: { children: ReactNode }) {
 }
 
 export function Sources({ children }: { children: ReactNode }) {
-  return <div className="sources">{children}</div>;
+  return (
+    <details className="sources">
+      <summary>Sources and details</summary>
+      {children}
+    </details>
+  );
 }
 
 export function DownloadCsv({ rows, columns, fileName }: { rows: Row[]; columns: string[]; fileName: string }) {
@@ -240,5 +249,16 @@ export function Findings({ items, gaps }: { items: Finding[]; gaps: string[] }) 
       <ul className="gaps">{gaps.map((gap) => <li key={gap}>{gap}</li>)}</ul>
       <p className="muted small">Computed in your browser from the published data files, so these sentences update when the data do. Evidence ratings: <a href="/method#evidence">how they are scored</a>.</p>
     </section>
+  );
+}
+
+/** "What this points to": the plain-language reading of a view for 2026, with its evidence rating. */
+export function PointsTo({ children, stars, basis }: { children: ReactNode; stars: 1 | 2 | 3 | 4 | 5; basis: string }) {
+  return (
+    <aside className="points-to" aria-label="What this points to for 2026">
+      <h3>What this points to for 2026</h3>
+      <div>{children}</div>
+      <p className="evidence"><Stars n={stars} /> {basis}</p>
+    </aside>
   );
 }

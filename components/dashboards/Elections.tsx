@@ -8,7 +8,7 @@ import { useDarkMode, VegaChart } from "@/components/VegaChart";
 import { choropleth, classify, STATE_FIPS } from "@/lib/maps";
 import Link from "next/link";
 import {
-  ChipSelect, Controls, DownloadCsv, Empty, type Finding, Findings, Loading, Metric, Metrics, Provenance, RangeSelect, Segmented,
+  ChipSelect, Controls, DownloadCsv, Empty, type Finding, Findings, PointsTo, Loading, Metric, Metrics, Provenance, RangeSelect, Segmented,
   SelectControl, Sources, Table, View,
 } from "@/components/ui";
 
@@ -40,6 +40,7 @@ export default function ElectionsDashboard() {
   return (
     <>
       <Findings items={findings(polls, seats, swing, polls2026)} gaps={GAPS} />
+      <ControlPanel polls={polls} seats={seats} polls2026={polls2026} generic={generic2026} />
       <ErrorView polls={polls} />
       <Polls2026View polls={polls} polls2026={polls2026} generic={generic2026} />
       <SwingView swing={swing} />
@@ -95,6 +96,92 @@ function findings(polls: Row[], seats: Row[], swing: Row[], polls2026: Row[]): F
     { text: `${inside.length} of the ${seats.length} Senate contests on the 2026 ballot were last decided by less than that ${fmt.dec(p90)}-point band: ${inside.map((s) => str(s, "state_name")).join(", ")}.`,
       stars: 2, basis: "Past margins with different candidates: a baseline for attention, not a forecast of competitiveness." },
   ];
+}
+
+/* ----------------------------------------------------------------------------- control scenarios */
+// Chamber totals before the election (cited on the page). Independents who caucus with Democrats count as Democrats.
+const SENATE_NOW = { R: 53, D: 47, source: "Forbes race tracker, 13 Oct 2026" };
+const HOUSE_NOW = { R: 218, D: 214, I: 1, vacant: 2, source: "House Press Gallery, page updated 2 Sep 2026" };
+const SENATE_MAJORITY_D = 51; // a 50-50 Senate is controlled by the Republican vice-president's tie-break
+
+type Scenario = { D: number; R: number };
+
+/** Senate seats after 3 Nov 2026 under a rule for the polled races; unpolled seats stay with the party holding them. */
+function senateScenario(seats: Row[], polls2026: Row[], rule: (demLead: number) => "D" | "R" | "keep"): Scenario {
+  const latest = new Map(latestPerState(polls2026).map((r) => [str(r, "state"), r]));
+  let D = SENATE_NOW.D;
+  for (const seat of seats) {
+    const poll = latest.get(str(seat, "state"));
+    if (!poll || poll.dem_lead === null) continue;
+    const outcome = rule(num(poll, "dem_lead"));
+    if (outcome === "keep") continue;
+    const held = seat.incumbent_party === "Democrat" ? "D" : "R";
+    if (held === "R" && outcome === "D") D += 1;
+    if (held === "D" && outcome === "R") D -= 1;
+  }
+  return { D, R: SENATE_NOW.D + SENATE_NOW.R - D };
+}
+
+const controlOf = (sc: Scenario) => (sc.D >= SENATE_MAJORITY_D ? "Democrats" : "Republicans");
+const PartyName = ({ name }: { name: string }) => <span className={name === "Democrats" ? "party-d" : "party-r"}>{name}</span>;
+
+function ControlPanel({ polls, seats, polls2026, generic }: { polls: Row[]; seats: Row[]; polls2026: Row[]; generic: Row[] }) {
+  const dark = useDarkMode();
+  const senateErr = polls.filter((r) => r.race_type === "Senate").map((r) => num(r, "absolute_error"));
+  const avg = mean(senateErr);
+  const p90 = quantile(senateErr, 0.9);
+  const leaders = senateScenario(seats, polls2026, (l) => (l > 0 ? "D" : l < 0 ? "R" : "keep"));
+  const lead = (band: number, close: "D" | "R") => senateScenario(seats, polls2026, (l) => (Math.abs(l) <= band ? close : l > 0 ? "D" : "R"));
+  const avgR = lead(avg, "R"), avgD = lead(avg, "D"), p90R = lead(p90, "R"), p90D = lead(p90, "D");
+  const latestGeneric = [...generic].sort((a, b) => str(a, "date").localeCompare(str(b, "date"))).at(-1);
+  const polled = latestPerState(polls2026).filter((r) => r.dem_lead !== null).length;
+
+  const ranges = useMemo(() => [
+    { label: "If the close races all go one way", lo: avgR.D, hi: avgD.D, order: 1 },
+    { label: "If polls are off by as much as they sometimes are", lo: p90R.D, hi: p90D.D, order: 2 },
+  ], [avgR.D, avgD.D, p90R.D, p90D.D]);
+  const spec = useMemo<TopLevelSpec>(() => ({
+    $schema: "https://vega.github.io/schema/vega-lite/v6.json", width: "container", height: { step: 46 },
+    layer: [
+      { data: { values: [{ x: 45 - 0.5, x2: 50.5 }] }, mark: { type: "rect", color: dark ? "#3a2224" : "#f8e3e2" }, encoding: { x: { field: "x", type: "quantitative" }, x2: { field: "x2" } } },
+      { data: { values: [{ x: 50.5, x2: 56 }] }, mark: { type: "rect", color: dark ? "#1d2c40" : "#e1ecfa" }, encoding: { x: { field: "x", type: "quantitative" }, x2: { field: "x2" } } },
+      { data: { values: ranges },
+        mark: { type: "bar", height: 14, cornerRadius: 7, color: dark ? "#98a2ae" : "#5a6472" },
+        encoding: {
+          y: { field: "label", type: "nominal", sort: { field: "order" }, title: null, axis: { labelLimit: 340 } },
+          x: { field: "lo", type: "quantitative", title: "Democratic Senate seats after the election", scale: { domain: [44.5, 56], zero: false, nice: false }, axis: { tickMinStep: 1, format: "d", values: [45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56] } },
+          x2: { field: "hi" },
+          tooltip: [{ field: "label", title: "Scenario" }, { field: "lo", title: "Fewest Democratic seats" }, { field: "hi", title: "Most Democratic seats" }],
+        } },
+      { data: { values: [{ x: 50.5 }] }, mark: { type: "rule", strokeWidth: 2, color: dark ? "#e8ebef" : "#18212d", strokeDash: [4, 3] }, encoding: { x: { field: "x", type: "quantitative" } } },
+      { data: { values: ranges.map((r) => ({ ...r, x: leaders.D })) }, mark: { type: "point", shape: "diamond", size: 170, filled: true, color: dark ? "#3987e5" : "#2a78d6" },
+        encoding: { x: { field: "x", type: "quantitative" }, y: { field: "label", type: "nominal", sort: { field: "order" } }, tooltip: [{ field: "x", title: "If every poll leader wins" }] } },
+    ],
+  }), [ranges, leaders.D, dark]);
+
+  return (
+    <section className="view" id="control" aria-labelledby="control-title">
+      <h2 id="control-title">Who is on track to control Congress?</h2>
+      <p className="plain">If today&apos;s polls are right, Democrats would narrowly win the Senate. But many races are so close that a normal polling miss could keep it Republican.</p>
+      <p className="how-to"><span className="how-to-label">How to read it</span>The grey bars show the range of Democratic seats, from &quot;every close race goes Republican&quot; to &quot;every close race goes Democratic&quot;. The diamond is what happens if every poll leader wins. Democrats need to reach the dashed line (51 seats) to take control.</p>
+      <p className="unit">Senate seats after 3 November 2026 under simple, stated scenarios. Not a forecast: one poll per race, and every seat without a poll is assumed to stay with the party that holds it.</p>
+      <Metrics>
+        <Metric label="Senate now" value={`R ${SENATE_NOW.R} – D ${SENATE_NOW.D}`} note={`Democrats need ${SENATE_MAJORITY_D - SENATE_NOW.D} net gains (a 50–50 tie goes to Republicans)`} />
+        <Metric label="If every poll leader wins" value={`D ${leaders.D} – R ${leaders.R}`} note={`${controlOf(leaders)} control`} />
+        <Metric label="If close races all go one way" value={`D ${avgR.D} to ${avgD.D}`} note={`races within ${fmt.dec(avg)} points`} />
+        <Metric label="If polls miss by as much as they sometimes do" value={`D ${p90R.D} to ${p90D.D}`} note={`races within ${fmt.dec(p90)} points`} />
+      </Metrics>
+      <p className="muted small">Grey bars: range of Democratic seats if the close races all go one way or the other. Diamond: every current poll leader wins. Dashed line: majority line (51 for Democrats; at 50 or fewer, Republicans control with the vice-president&apos;s tie-break).</p>
+      <VegaChart spec={spec} label="Range of Democratic Senate seats under polling-error scenarios" height={150} />
+      <PointsTo stars={2} basis={`Single polls in ${polled} of 35 races, hand-entered from cited reports; the error bands come from 4,850 historical polls.`}>
+        <p><strong>Senate:</strong> if every candidate leading in today&apos;s polls wins, <PartyName name={controlOf(leaders)} /> control the Senate, {leaders.D} seats to {leaders.R}. But if the close races all go Republican, it ends {avgR.D}–{avgR.R} and <PartyName name={controlOf(avgR)} /> stay in charge. If they all go Democratic, Democrats get {avgD.D}. Bottom line: Democrats have a slight edge on current polls, but the Senate is still up for grabs.</p>
+        {latestGeneric && <p><strong>House:</strong> Republicans hold {HOUSE_NOW.R} of 435 seats (Democrats {HOUSE_NOW.D}, {HOUSE_NOW.I} independent, {HOUSE_NOW.vacant} vacant). The latest generic-ballot reading in the workbook has <PartyName name={num(latestGeneric, "dem_lead") >= 0 ? "Democrats" : "Republicans"} /> ahead by {fmt.dec(Math.abs(num(latestGeneric, "dem_lead")))} points nationally ({str(latestGeneric, "measure")}, {str(latestGeneric, "date")}). In plain words, more voters say they plan to vote Democratic for the House, which points to Democrats gaining seats. The exact result also depends on how district lines are drawn, and several states redrew theirs for 2026.</p>}
+      </PointsTo>
+      <Sources>
+        <p>Chamber totals: {SENATE_NOW.source}; {HOUSE_NOW.source}. Polls: the curated 2026 workbook. Error bands: {POLLS_SOURCE}</p>
+      </Sources>
+    </section>
+  );
 }
 
 /* ----------------------------------------------------------------------------- polling error */
@@ -168,7 +255,7 @@ function ErrorView({ polls }: { polls: Row[] }) {
   const bias = mean(units.map((u) => u.signed));
 
   return (
-    <View id="polling-error" title="How wrong have pre-election polls been?" unit="Percentage points of the Democrat-minus-Republican margin. Error = poll margin − actual margin; positive values mean the poll overstated the Democrat.">
+    <View id="polling-error" plain={<>Polls are useful but not exact. A typical Senate poll ends up about 5 points away from the real result, and one in ten is off by more than 11 points.</>} howTo={<>Taller bars mean polls were further off that year. In the second chart, bars above zero mean polls flattered Democrats; below zero, they flattered Republicans.</>} title="How wrong have pre-election polls been?" unit="Percentage points of the Democrat-minus-Republican margin. Error = poll margin − actual margin; positive values mean the poll overstated the Democrat.">
       <Provenance by="FiveThirtyEight (polls matched to certified results)" status="archived" latest={polls.map((r) => str(r, "election_date")).sort().at(-1)!} note="last election in the file; 2024 polls not included" />
       <Controls>
         <ChipSelect label="Race types" options={RACES} value={races} onChange={setRaces} />
@@ -208,6 +295,9 @@ function ErrorView({ polls }: { polls: Row[] }) {
           ]} />
         </>
       )}
+      <PointsTo stars={4} basis="4,850 Senate polls matched to certified results, 1998–2022.">
+        <p>This chart does not favour either party. It tells you how much to trust a poll: if a candidate leads by less than about {fmt.dec(mean(polls.filter((r) => r.race_type === "Senate").map((r) => num(r, "absolute_error"))), 0)} points, the race is still a toss-up. Polls have been wrong in favour of Republicans in some years and Democrats in others, so nobody can know in advance which way 2026 polls will lean.</p>
+      </PointsTo>
       <Sources>
         <p>{POLLS_SOURCE}</p>
         <p>Only contests whose top two finishers were a Democrat and a Republican are included, so margins share a direction. Polls of the same race are not independent: a cycle-wide miss moves many polls together, which is why signed error swings between cycles.</p>
@@ -280,7 +370,7 @@ function Polls2026View({ polls, polls2026, generic }: { polls: Row[]; polls2026:
   }), [generic, dark]);
 
   return (
-    <View id="polls-2026" title="2026 Senate polls against the historical error" unit="Percentage points of the Democrat-minus-Republican margin in a single poll. Dark band: ± the average Senate poll miss; light band: ± the miss exceeded by one poll in ten (1998–2022).">
+    <View id="polls-2026" plain={<>These are the latest polls for this year&apos;s key Senate races. Most leads are small enough that a normal polling miss could flip the result.</>} howTo={<>Each dot is one race. Dots to the right of the middle line mean the Democrat leads; to the left, the Republican leads. If a dot sits inside the grey bands, the lead is smaller than polls usually miss by.</>} title="2026 Senate polls against the historical error" unit="Percentage points of the Democrat-minus-Republican margin in a single poll. Dark band: ± the average Senate poll miss; light band: ± the miss exceeded by one poll in ten (1998–2022).">
       <Provenance by="Pollsters named in each row; entered by hand from cited reports" status="curated" latest={latestDate} note="latest poll date entered" />
       <Controls>
         <Segmented label="Polls shown" options={["Latest poll per race", "All polls"]} value={scope} onChange={setScope} />
@@ -315,6 +405,18 @@ function Polls2026View({ polls, polls2026, generic }: { polls: Row[]; polls2026:
           )}
         </>
       )}
+      {shown.length > 0 && (() => {
+        const latest = latestPerState(polls2026).filter((r) => r.dem_lead !== null);
+        const dLead = latest.filter((r) => num(r, "dem_lead") > 0);
+        const rLead = latest.filter((r) => num(r, "dem_lead") < 0);
+        const close = latest.filter((r) => Math.abs(num(r, "dem_lead")) <= avg);
+        return (
+          <PointsTo stars={2} basis="One poll per race, hand-entered; a snapshot weeks before election day.">
+            <p><span className="party-d">Democrats lead in {dLead.length} races</span>: {dLead.map((r) => str(r, "race")).join(", ") || "none"}. <span className="party-r">Republicans lead in {rLead.length}</span>: {rLead.map((r) => str(r, "race")).join(", ") || "none"}.{latest.length - dLead.length - rLead.length > 0 ? ` ${latest.length - dLead.length - rLead.length} race is tied.` : ""}</p>
+            <p>{dLead.length > rLead.length ? "So on paper Democrats are ahead" : dLead.length < rLead.length ? "So on paper Republicans are ahead" : "On paper it is even"}, but {close.length} of these {latest.length} races are too close to call: {close.map((r) => str(r, "race")).join(", ")}. {(() => { const clear = latest.filter((r) => Math.abs(num(r, "dem_lead")) > p90); return clear.length ? `Only ${clear.map((r) => `${str(r, "race")} (${num(r, "dem_lead") > 0 ? "Democrat" : "Republican"} ahead)`).join(", ")} has a lead big enough to survive even a large polling miss.` : "No lead is big enough to survive a large polling miss."; })()}</p>
+          </PointsTo>
+        );
+      })()}
       <Sources>
         <p><cite>2026 Senate polls and generic ballot (curated workbook)</cite>, compiled for this site with a source link on every row; error bands from {POLLS_SOURCE}</p>
         <p>Each dot is one poll, not an average. Polls in the same cycle often miss in the same direction, so several races inside the band can move together. The workbook lives in the repository; anyone can see what was entered and when.</p>
@@ -361,7 +463,7 @@ function SwingView({ swing }: { swing: Row[] }) {
   const senateSwings = swing.filter((r) => r.senate_race_2026 === "yes").map((r) => num(r, "swing_2020_2024"));
 
   return (
-    <View id="swing" title="How the country moved between 2020 and 2024" unit="Percentage points. Swing = 2024 presidential margin minus 2020 margin (Democrat minus Republican); negative = moved toward the Republican.">
+    <View id="swing" plain={<>Between 2020 and 2024, every single state voted more Republican for president than before.</>} howTo={<>Darker red means a state moved further toward Republicans. States with a thick outline also hold a Senate race in 2026.</>} title="How the country moved between 2020 and 2024" unit="Percentage points. Swing = 2024 presidential margin minus 2020 margin (Democrat minus Republican); negative = moved toward the Republican.">
       <Provenance by="State election offices, compiled by FiveThirtyEight" status="observed" latest="2024-11-05" note="certified presidential results" />
       <Controls>
         <Segmented label="States" options={["All states", "Only states with a 2026 Senate race"]} value={scope} onChange={setScope} />
@@ -377,6 +479,9 @@ function SwingView({ swing }: { swing: Row[] }) {
       <h3>Every state, ranked by swing</h3>
       <p className="muted small">Red bars: states with a 2026 Senate contest.</p>
       <VegaChart spec={barSpec} label="States ranked by presidential swing from 2020 to 2024" />
+      <PointsTo stars={3} basis="Certified results; how a presidential swing carries into a midterm is uncertain.">
+        <p>In 2024 the whole country moved toward <span className="party-r">Republicans</span>, by about {fmt.dec(Math.abs(median(swings)), 0)} points in a typical state. That gives Republicans a head start. But in midterm elections voters often turn against the president&apos;s party, so 2024 tells you where 2026 starts, not where it ends. Look at the 2026 polls above as well.</p>
+      </PointsTo>
       <Sources>
         <p>{SEATS_SOURCE}</p>
         <p>Margins use the top Democratic and Republican candidates&apos; shares of the statewide vote. Maine and Nebraska award some electoral votes by district; the statewide vote is used here. Midterm electorates differ from presidential ones, and the president&apos;s party has often lost ground in midterms, so this swing is context, not a forecast.</p>
@@ -475,7 +580,7 @@ function SeatsView({ polls, seats: baseSeats, polls2026 }: { polls: Row[]; seats
   }), [JSON.stringify(mapRows), dark]);
 
   return (
-    <View id="senate-2026" title="Which 2026 Senate seats sit inside the historical polling error?" unit="Percentage points of the Democrat-minus-Republican margin (negative = Republican lead). Shaded band: ± the chosen percentile of absolute error in Senate polls, 1998–2022.">
+    <View id="senate-2026" plain={<>These are the 35 Senate seats people will vote on in November 2026, and how close each one was last time.</>} howTo={<>Pale colours mean the seat was close; dark colours mean it was a landslide. A thick outline means the seat is close enough that a normal polling miss could decide it.</>} title="Which 2026 Senate seats sit inside the historical polling error?" unit="Percentage points of the Democrat-minus-Republican margin (negative = Republican lead). Shaded band: ± the chosen percentile of absolute error in Senate polls, 1998–2022.">
       <Provenance by="@unitedstates roster; FiveThirtyEight results" status="observed" latest={seats.map((s) => str(s, "last_election_date")).sort().at(-1)!} note="seats and incumbents as listed 15 Oct 2026; election day 3 Nov 2026" />
       <Controls>
         <ChipSelect label="Party holding the seat" options={["Democrat", "Republican"]} value={parties} onChange={setParties} />
@@ -508,6 +613,17 @@ function SeatsView({ polls, seats: baseSeats, polls2026 }: { polls: Row[]; seats
           ]} />
         </>
       )}
+      {plot.length > 0 && (() => {
+        const rHeld = seats.filter((x) => x.incumbent_party === "Republican").length;
+        const dHeld = seats.filter((x) => x.incumbent_party === "Democrat").length;
+        const rInside = inside.filter((p) => p.incumbent_party === "Republican").length;
+        const dInside = inside.filter((p) => p.incumbent_party === "Democrat").length;
+        return (
+          <PointsTo stars={2} basis={usingPolls ? "Single 2026 polls; seats without a poll are not shown." : "Past results with different candidates; a guide to where to look, not who will win."}>
+            <p>Of the 35 seats being voted on, <span className="party-r">{rHeld} belong to Republicans</span> and <span className="party-d">{dHeld} to Democrats</span>. Republicans have more seats to defend; Democrats need to win 4 more than they lose. Using the {baselineLabel.toLowerCase()}, {rInside} Republican seats and {dInside} Democratic seats are close enough to change hands. {rInside > dInside ? "Most of the close seats are Republican, so that is where Democrats would have to win." : rInside < dInside ? "Most of the close seats are Democratic, which helps Republicans keep control." : "The close seats are split evenly."}</p>
+          </PointsTo>
+        );
+      })()}
       <Sources>
         <p>{SEATS_SOURCE} Error band from {POLLS_SOURCE}</p>
         <p>A past margin is not a 2026 forecast: candidates, turnout and the national environment change, several seats have new appointees, and whether an incumbent is running is not recorded here. Arkansas 2020 had no Democratic nominee, so its baseline falls back to the 2024 presidential margin. Louisiana&apos;s last contest was an all-party primary.</p>

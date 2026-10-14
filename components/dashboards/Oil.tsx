@@ -137,7 +137,7 @@ function DemandView({ countries }: { countries: Row[] }) {
   }), [filtered, measure, measureLabel, names, chosen, dark]);
 
   return (
-    <View id="demand" title="Is oil demand bending?" unit="Index (2019 = 100) of oil consumption; percent of primary energy (substitution method); kilowatt-hours per person; terawatt-hours (TWh).">
+    <View id="demand" plain={<>The world uses a little more oil than it did before COVID. China and India use much more, while the US, Japan and Germany use less.</>} howTo={<>Each line is one country. 100 means &quot;the same as 2019&quot;. Above 100 means it uses more oil than in 2019; below 100, less.</>} title="Is oil demand bending?" unit="Index (2019 = 100) of oil consumption; percent of primary energy (substitution method); kilowatt-hours per person; terawatt-hours (TWh).">
       <Provenance by="Energy Institute, via Our World in Data" status="estimated" latest={latestDate} note="calendar-year values" />
       <Controls>
         <ChipSelect label="Countries" options={names} value={chosen} onChange={setChosen} max={8} />
@@ -228,7 +228,7 @@ function BalanceView({ regions }: { regions: Row[] }) {
   }), [end]);
 
   return (
-    <View id="balance" title="Regional oil production, consumption and net balance" unit="Terawatt-hours (TWh) of primary energy per year; shares in percent of the world total. Net balance = production − consumption.">
+    <View id="balance" plain={<>Some parts of the world pump far more oil than they use (the Middle East, Russia and its neighbours), and others rely heavily on buying it (Asia, Europe).</>} howTo={<>Above zero, a region produces more than it uses and can sell the rest. Below zero, it has to buy oil from elsewhere. The bars show the most recent year.</>} title="Regional oil production, consumption and net balance" unit="Terawatt-hours (TWh) of primary energy per year; shares in percent of the world total. Net balance = production − consumption.">
       <Provenance by="Energy Institute, via Our World in Data" status="estimated" latest={latestDate} note="calendar-year totals" />
       <Controls>
         <ChipSelect label="Regions" options={all} value={chosen} onChange={setChosen} />
@@ -333,7 +333,7 @@ function PriceView({ prices }: { prices: Row[] }) {
   }), [spread]);
 
   return (
-    <View id="prices" title="Brent and WTI monthly spot prices" unit="US dollars per barrel, nominal; monthly average of daily spot prices.">
+    <View id="prices" plain={<>This is the long view: oil prices since 1990, with the big spikes and crashes of 2008, 2014–16, 2020 and 2022.</>} howTo={<>Each line is the average price in a month. Use the period boxes to zoom in on any years you like.</>} title="Brent and WTI monthly spot prices" unit="US dollars per barrel, nominal; monthly average of daily spot prices.">
       <Provenance by="U.S. Energy Information Administration" status="observed" latest={months.at(-1)!} note="monthly average for that month" />
       <Controls>
         <ChipSelect label="Benchmarks" options={BENCHMARKS} value={chosen} onChange={setChosen} />
@@ -433,7 +433,7 @@ function RecentView({ daily }: { daily: Row[] }) {
   }), [filtered, chosen]);
 
   return (
-    <View id="recent" title="2024–2026 up close: daily Brent and WTI" unit="US dollars per barrel, nominal daily spot price; daily change in percent; volatility annualised from the last 21 trading days.">
+    <View id="recent" plain={<>Oil prices have been on a roller coaster since the start of 2024. They fell to about US$60 a barrel in late 2025, then shot up to over US$130 in 2026.</>} howTo={<>The lines show the price of a barrel of oil every trading day. Brent is the world benchmark, WTI the American one. Tall bars in the second chart are days when the price jumped or crashed.</>} title="2024–2026 up close: daily Brent and WTI" unit="US dollars per barrel, nominal daily spot price; daily change in percent; volatility annualised from the last 21 trading days.">
       <Provenance by="U.S. Energy Information Administration" status="observed" latest={latestDate} note="each benchmark on its own trading days" />
       <Controls>
         <ChipSelect label="Benchmarks" options={BENCHMARKS} value={chosen} onChange={setChosen} />
@@ -520,7 +520,7 @@ function CountryMapView({ rows }: { rows: Row[] }) {
   const consumers = filtered.filter((r) => r.oil_consumption_twh !== null).length;
 
   return (
-    <View id="country-map" title="Who produces more oil than they consume? Country map" unit="Terawatt-hours (TWh) per year for production, consumption and net balance; kilowatt-hours per person; percent of primary energy.">
+    <View id="country-map" plain={<>Blue countries produce more oil than they use; orange countries have to buy it. China and India are the biggest buyers, Saudi Arabia and Russia among the biggest sellers.</>} howTo={<>Darker colours mean bigger amounts. Grey means the source does not report that country separately, not that it uses no oil. Hover over a country for its numbers.</>} title="Who produces more oil than they consume? Country map" unit="Terawatt-hours (TWh) per year for production, consumption and net balance; kilowatt-hours per person; percent of primary energy.">
       <Provenance by="Energy Institute, via Our World in Data" status="estimated" latest={rows.map((r) => str(r, "date")).sort().at(-1)!} note="calendar-year values; map starts in 2017" />
       <Controls>
         <RangeSelectSingle label="Year" options={years} value={year} onChange={setYear} />
