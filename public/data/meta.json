@@ -23,8 +23,8 @@
       },
       "prices_daily": {
         "file": "/data/oil/prices_daily.csv",
-        "rows": 1401,
-        "latest_observation": "2026-10-14"
+        "rows": 1409,
+        "latest_observation": "2026-10-20"
       }
     },
     "elections": {
@@ -72,5 +72,5 @@
       }
     }
   },
-  "refreshed_at": "2026-10-16T22:08:10Z"
+  "refreshed_at": "2026-10-22T22:25:21Z"
 }
