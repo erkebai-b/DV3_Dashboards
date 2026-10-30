@@ -62,8 +62,8 @@
       },
       "claims": {
         "file": "/data/drones/claims.csv",
-        "rows": 229,
-        "latest_observation": "2026-09-30"
+        "rows": 234,
+        "latest_observation": "2026-10-31"
       },
       "platforms": {
         "file": "/data/drones/platforms.csv",
@@ -72,5 +72,5 @@
       }
     }
   },
-  "refreshed_at": "2026-10-29T23:21:00Z"
+  "refreshed_at": "2026-10-30T23:00:48Z"
 }
