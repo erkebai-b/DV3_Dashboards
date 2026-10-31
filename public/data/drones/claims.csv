@@ -55,7 +55,7 @@ month_end,last_report_date,category,claimed_cumulative,reports_in_month,claimed_
 2026-07-31,2026-07-31,Armoured combat vehicles,25056,31,205
 2026-08-31,2026-08-31,Armoured combat vehicles,25255,31,199
 2026-09-30,2026-09-30,Armoured combat vehicles,25463,30,208
-2026-10-31,2026-10-30,Armoured combat vehicles,25617,30,154
+2026-10-31,2026-10-31,Armoured combat vehicles,25620,31,157
 2022-02-28,2022-02-28,Artillery systems,74,4,74
 2022-03-31,2022-03-31,Artillery systems,311,31,237
 2022-04-30,2022-04-30,Artillery systems,436,30,125
@@ -112,7 +112,7 @@ month_end,last_report_date,category,claimed_cumulative,reports_in_month,claimed_
 2026-07-31,2026-07-31,Artillery systems,47045,31,2005
 2026-08-31,2026-08-31,Artillery systems,48883,31,1838
 2026-09-30,2026-09-30,Artillery systems,50519,30,1636
-2026-10-31,2026-10-30,Artillery systems,51720,30,1201
+2026-10-31,2026-10-31,Artillery systems,51739,31,1220
 2022-02-28,2022-02-28,Drones (UAVs),3,4,3
 2022-03-31,2022-03-31,Drones (UAVs),83,31,80
 2022-04-30,2022-04-30,Drones (UAVs),232,30,149
@@ -169,13 +169,13 @@ month_end,last_report_date,category,claimed_cumulative,reports_in_month,claimed_
 2026-07-31,2026-07-31,Drones (UAVs),435665,31,54489
 2026-08-31,2026-08-31,Drones (UAVs),490402,31,54737
 2026-09-30,2026-09-30,Drones (UAVs),540095,30,49693
-2026-10-31,2026-10-30,Drones (UAVs),588998,30,48903
+2026-10-31,2026-10-31,Drones (UAVs),590661,31,50566
 2026-05-31,2026-05-31,Ground robotic systems,1519,31,
 2026-06-30,2026-06-30,Ground robotic systems,1777,30,258
 2026-07-31,2026-07-31,Ground robotic systems,2081,31,304
 2026-08-31,2026-08-31,Ground robotic systems,2442,31,361
 2026-09-30,2026-09-30,Ground robotic systems,2789,30,347
-2026-10-31,2026-10-30,Ground robotic systems,3039,30,250
+2026-10-31,2026-10-31,Ground robotic systems,3045,31,256
 2022-02-28,2022-02-28,Tanks,150,4,150
 2022-03-31,2022-03-31,Tanks,614,31,464
 2022-04-30,2022-04-30,Tanks,1008,30,394
@@ -232,4 +232,4 @@ month_end,last_report_date,category,claimed_cumulative,reports_in_month,claimed_
 2026-07-31,2026-07-31,Tanks,12231,31,164
 2026-08-31,2026-08-31,Tanks,12316,31,85
 2026-09-30,2026-09-30,Tanks,12388,30,72
-2026-10-31,2026-10-30,Tanks,12450,30,62
+2026-10-31,2026-10-31,Tanks,12450,31,62
