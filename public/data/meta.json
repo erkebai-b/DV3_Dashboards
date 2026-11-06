@@ -3,8 +3,8 @@
     "oil": {
       "prices": {
         "file": "/data/oil/prices.csv",
-        "rows": 882,
-        "latest_observation": "2026-09-01"
+        "rows": 884,
+        "latest_observation": "2026-10-01"
       },
       "regions": {
         "file": "/data/oil/regions.csv",
@@ -23,8 +23,8 @@
       },
       "prices_daily": {
         "file": "/data/oil/prices_daily.csv",
-        "rows": 1419,
-        "latest_observation": "2026-10-27"
+        "rows": 1429,
+        "latest_observation": "2026-11-03"
       }
     },
     "elections": {
@@ -72,5 +72,5 @@
       }
     }
   },
-  "refreshed_at": "2026-10-31T22:34:19Z"
+  "refreshed_at": "2026-11-06T00:23:22Z"
 }
